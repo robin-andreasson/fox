@@ -1,5 +1,12 @@
 package fox
 
+type handler struct {
+	path    string
+	method  string
+	mw      []func(c Context)
+	handler func(c Context)
+}
+
 func (r *router) GET(path string, functions ...func(c Context)) {
 	r.handlers = append(r.handlers, addHandler(path, "GET", functions))
 }
