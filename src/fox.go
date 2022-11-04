@@ -1,19 +1,17 @@
 package fox
 
 //Later import net, errors
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"net"
 
-type Context struct {
-	Request  string
-	Response string
+	parser "github.com/Robster0/http-parser"
+)
 
-	Serve func(c Context)
-}
-
-type handler struct {
-	path    string
-	method  string
-	mw      []func(c Context)
-	handler func(c Context)
+type connection struct {
+	Scheme string
 }
 
 type router struct {
@@ -21,9 +19,53 @@ type router struct {
 }
 
 func NewRouter() *router {
-	var r router
-
-	return &r
+	return &router{}
 }
 
-var Test Context = Context{"Request", "Response", nil}
+func (r *router) Listen(port int) {
+	ln, err := net.Listen("tcp", ":3000")
+
+	if err != nil {
+		log.Panic(err)
+	}
+
+	for {
+		conn, err := ln.Accept()
+
+		if err != nil {
+			log.Panic(err)
+		}
+
+		scanner := bufio.NewScanner(conn)
+
+		fmt.Println(r)
+		//var c Context
+
+		var message []byte
+
+		for {
+			if !scanner.Scan() {
+				r.handleRequests(message)
+
+				break
+			}
+
+			message = append(message, scanner.Bytes()...)
+		}
+
+		defer conn.Close()
+
+	}
+}
+
+func (r *router) handleRequests(data []byte) {
+
+	headers_bytes, body_bytes := parser.FirstInstance(data, "\r\n\r\n")
+
+	parser.Headers(string(headers_bytes))
+
+	if len(body_bytes) > 0 {
+		//Parse body
+	}
+
+}
