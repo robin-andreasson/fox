@@ -1,21 +1,19 @@
 package main
 
 import (
-	"fmt"
+	"net/http"
 
 	"github.com/Robster0/fox"
 )
 
 func main() {
-	fmt.Println(fox.Test)
-
 	r := fox.NewRouter()
 
 	r.GET("/", home)
 
 	r.GET("/profile", auth, profile)
 
-	fmt.Println(r)
+	r.Listen(3000)
 }
 
 func auth(c fox.Context) {
@@ -23,7 +21,7 @@ func auth(c fox.Context) {
 }
 
 func home(c fox.Context) {
-
+	c.Status(http.StatusAccepted).Send("<h1>Home Page</h1>")
 }
 
 func profile(c fox.Context) {
