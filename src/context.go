@@ -27,16 +27,16 @@ func (c *Context) SetHeader(key string, value string) {
 	c.setHeaders[key] = value
 }
 
-func json() {
+/*func json() {
 
-	/*m := map[string]interface{}
+	m := map[string]interface{}
 
 	  err := json.Unmarshal([]byte(input), &m)
 	  if err != nil {
 	      panic(err)
 	  }
-	  fmt.Println(m)*/
-}
+	  fmt.Println(m)
+}*/
 
 func (c *Context) S(code int, body string) {
 

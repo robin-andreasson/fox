@@ -9,10 +9,6 @@ import (
 	parser "github.com/Robster0/http-parser"
 )
 
-type connection struct {
-	Scheme string
-}
-
 type router struct {
 	handlers []handler
 	Port     int
