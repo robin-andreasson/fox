@@ -2,7 +2,6 @@ package fox
 
 //Later import net, errors
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"net"
@@ -16,18 +15,25 @@ type connection struct {
 
 type router struct {
 	handlers []handler
+	Port     int
 }
 
 func NewRouter() *router {
 	return &router{}
 }
 
-func (r *router) Listen(port int) {
-	ln, err := net.Listen("tcp", ":3000")
+func (r *router) Listen(port int, cb func(err error)) {
+	ln, err := net.Listen("tcp", fmt.Sprint(":", port))
+
+	r.Port = port
 
 	if err != nil {
-		log.Panic(err)
+		cb(err)
+
+		return
 	}
+
+	cb(nil)
 
 	for {
 		conn, err := ln.Accept()
@@ -36,36 +42,57 @@ func (r *router) Listen(port int) {
 			log.Panic(err)
 		}
 
-		scanner := bufio.NewScanner(conn)
+		go request(conn, *r)
+	}
+}
 
-		fmt.Println(r)
-		//var c Context
+func request(conn net.Conn, r router) {
 
-		var message []byte
+	var body []byte
+	var c Context
 
-		for {
-			if !scanner.Scan() {
-				r.handleRequests(message)
+	for {
+		buffer := make([]byte, 1024*12)
 
-				break
-			}
+		n, err := conn.Read(buffer)
 
-			message = append(message, scanner.Bytes()...)
+		if err != nil {
+			return
 		}
 
-		defer conn.Close()
+		if len(c.Headers) == 0 {
+			headers_bytes, body_bytes := parser.FirstInstance(buffer[0:n], "\r\n\r\n")
 
+			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
+
+			if len(body_bytes) > 0 {
+				body = append(body, body_bytes...)
+			}
+
+		} else {
+			body = append(body, buffer[0:n]...)
+		}
+
+		if c.Headers["Content-Length"] == fmt.Sprint(len(body)) || c.Headers["Content-Length"] == "" {
+			c.conn = conn
+			r.handleRequests(c, body)
+			break
+		}
 	}
 }
 
-func (r *router) handleRequests(data []byte) {
+func (r *router) handleRequests(c Context, raw []byte) {
 
-	headers_bytes, body_bytes := parser.FirstInstance(data, "\r\n\r\n")
+	/*fmt.Println("HANDLEREQUESTS HAS BEEN CALLED")
 
-	parser.Headers(string(headers_bytes))
+	fmt.Println("Headers: ", c.Headers)
+	fmt.Println("Raw Body: ", string(raw))
 
-	if len(body_bytes) > 0 {
-		//Parse body
+	fmt.Println("r: ", r)*/
+
+	for i := 0; i < len(r.handlers); i++ {
+		r.handlers[i].handler(c)
 	}
-
 }
+
+var Test int = 2
