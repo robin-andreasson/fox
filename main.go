@@ -2,42 +2,62 @@ package main
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/Robster0/fox"
+	"os"
+
+	"github.com/robin-andreasson/fox"
 )
 
 func main() {
 	r := fox.NewRouter()
 
-	fmt.Println(time.Now().UTC())
+	r.Get("/test/title_*_test2_*", home)
 
-	r.GET("/", home)
+	r.Get("/profile/:name", auth, profile)
 
-	r.GET("/profile", auth, profile)
+	r.Get("/index", index)
 
-	r.Listen(3000, func(err error) {
+	r.Get("/book/:title;[a-zA-Z()]+/:page;[0-9]+", book)
 
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+	r.Post("/image", image)
 
-		fmt.Println("Starting server at port:", r.Port)
-	})
+	fmt.Println("Starting port at", 3000)
+	r.Listen(3000)
 }
 
-func auth(c fox.Context) {
+func auth(c *fox.Context) {
+	fmt.Println("AUTH!")
+
+	c.Cookie("test", "damn thats a good value", fox.CookieAttributes{BASE64: true, ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
+
+	c.Next()
 
 }
 
-func home(c fox.Context) {
+func image(c *fox.Context) {
 
-	c.SetHeader("X-test", "VERY COOL VALUE")
+	fmt.Println(c.Json)
 
-	c.S(fox.Status.Ok, "<h1>Home Page</h1>")
+	c.String(fox.Status.Created, "test")
 }
 
-func profile(c fox.Context) {
+func home(c *fox.Context) {
+	c.String(fox.Status.Ok, "<h1>Home Page</h1>")
+}
 
+func profile(c *fox.Context) {
+
+	c.String(fox.Status.Ok, "<h1>"+c.Params["name"]+"'s PROFILE PAGE!</h1>")
+}
+
+func index(c *fox.Context) {
+
+	dirname, _ := os.Getwd()
+
+	c.File(fox.Status.Ok, dirname+"/html/index.html")
+}
+
+func book(c *fox.Context) {
+
+	c.String(fox.Status.Ok, "<h1>Title: "+c.Params["title"]+" Page: "+c.Params["page"]+"</h1>")
 }
