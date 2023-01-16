@@ -17,8 +17,9 @@ type Context struct {
 	Headers    map[string]string
 	setHeaders map[string][]string
 
-	Json interface{}
-	Form interface{}
+	Json     interface{}
+	Form     interface{}
+	FormData map[string]interface{}
 
 	Params map[string]string
 	Query  map[string]string
@@ -36,6 +37,19 @@ type CookieAttributes struct {
 	Domain    string
 	SameSite  string //strict, lax or none are the only accepted values
 	ExpiresIn int
+}
+
+func (c *Context) Nested(target map[string]interface{}, keys ...string) interface{} {
+
+	fmt.Println(target)
+	if len(keys) == 0 {
+		return target
+	}
+
+	key := keys[0]
+	keys = keys[1:]
+
+	return c.Nested(target[key].(map[string]interface{}), keys...)
 }
 
 func (c *Context) Next() {

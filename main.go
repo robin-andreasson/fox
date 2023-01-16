@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 
 	"os"
 
@@ -10,14 +11,23 @@ import (
 
 func main() {
 	r := fox.NewRouter()
+	hasFile_rex := regexp.MustCompile(`^Content-Disposition: form-data; name="(.+?)"; filename="(.+?)"$`)
 
-	r.Get("/test/title_*_test2_*", home)
+	result := hasFile_rex.FindStringSubmatch(`Content-Disposition: form-data; name=""test";"; filename="coolfilename"`)
+
+	for i, re := range result {
+		fmt.Println("INDEX: ", i, ": ", re)
+	}
+
+	r.Static("public")
+
+	r.Get("/", home)
 
 	r.Get("/profile/:name", auth, profile)
 
-	r.Get("/index", index)
+	r.Get("/file", file)
 
-	r.Get("/book/:title;[a-zA-Z()]+/:page;[0-9]+", book)
+	r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", book)
 
 	r.Post("/image", image)
 
@@ -36,7 +46,9 @@ func auth(c *fox.Context) {
 
 func image(c *fox.Context) {
 
-	fmt.Println(c.Json)
+	data := c.FormData["Files"].(map[string]interface{})["name-file"].(map[string][]byte)["Data"]
+
+	fmt.Println(data)
 
 	c.String(fox.Status.Created, "test")
 }
@@ -50,7 +62,7 @@ func profile(c *fox.Context) {
 	c.String(fox.Status.Ok, "<h1>"+c.Params["name"]+"'s PROFILE PAGE!</h1>")
 }
 
-func index(c *fox.Context) {
+func file(c *fox.Context) {
 
 	dirname, _ := os.Getwd()
 

@@ -2,10 +2,15 @@ package fox
 
 //Later import net, errors
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
 
 	"github.com/robin-andreasson/fox/parser"
 )
@@ -13,17 +18,61 @@ import (
 type router struct {
 	handlers []handler
 	prefix   string
-	Port     int
+
+	static map[string]static_content
+}
+
+type static_content struct {
+	path string
+	rex  string
 }
 
 func NewRouter() *router {
 	return &router{}
 }
 
+/*
+Statically serve files
+
+"name" parameter is the name of the target folder
+
+"relative_path" parameter is the path relative to the target folder, will use name if not specified.
+
+parameter is variadic but only allows one input as the purpose is only to make it optional
+*/
+func (r *router) Static(name string, relative_path ...string) {
+
+	if len(relative_path) > 1 {
+		log.Panic(errors.New("only one relative_path argument is allowed"))
+	}
+
+	_, call_path, _, _ := runtime.Caller(1)
+
+	call_path = filepath.Dir(call_path)
+
+	var path string
+
+	if len(relative_path) == 0 {
+		path = filepath.Join(call_path, "/"+name)
+	} else {
+		path = filepath.Join(call_path, relative_path[0])
+	}
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Panic("Cannot find the specified directory")
+	}
+
+	if r.static == nil {
+		r.static = map[string]static_content{}
+	}
+
+	rex := `\/` + name + `\/.+`
+
+	r.static[name] = static_content{filepath.Dir(path), rex}
+}
+
 func (r *router) Listen(port int) error {
 	ln, err := net.Listen("tcp", fmt.Sprint(":", port))
-
-	r.Port = port
 
 	if err != nil {
 		return err
@@ -66,6 +115,8 @@ func request(conn net.Conn, r router) {
 			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
 			c.setHeaders = make(map[string][]string)
 
+			fmt.Println(c.Headers)
+
 			if len(body_bytes) > 0 {
 				body = append(body, body_bytes...)
 			}
@@ -84,7 +135,12 @@ func request(conn net.Conn, r router) {
 	}
 }
 
-func (r *router) handleRequests(c Context, raw []byte) {
+func (r *router) handleRequests(c Context, body []byte) {
+
+	//Checks if the url path is related to any of the static handlers
+	if r.handleStatic(&c) {
+		return
+	}
 
 	for _, handler := range r.handlers {
 
@@ -101,16 +157,7 @@ func (r *router) handleRequests(c Context, raw []byte) {
 		c.Params = params
 		c.Query = queries
 
-		if c.Headers["Content-Type"] != "" {
-			switch c.Headers["Content-Type"] {
-			case "application/json":
-				err := json.Unmarshal(raw, &c.Json)
-
-				if err != nil {
-					log.Panic("error parsing json object")
-				}
-			}
-		}
+		handleBody(body, &c)
 
 		for _, function := range handler.stack {
 
@@ -128,4 +175,53 @@ func (r *router) handleRequests(c Context, raw []byte) {
 
 		return
 	}
+}
+
+func handleBody(body []byte, c *Context) {
+	if c.Headers["Content-Type"] == "" {
+		return
+	}
+
+	segments := strings.Split(c.Headers["Content-Type"], "; ")
+
+	switch segments[0] {
+	case "application/json":
+		c.Json = parser.JSON(body)
+		break
+	case "multipart/form-data":
+
+		delimiter := strings.Split(segments[1], "boundary=")[1]
+
+		c.FormData = parser.FormData(body, []byte("--"+delimiter))
+		break
+	}
+}
+
+func (r *router) handleStatic(c *Context) bool {
+
+	for _, s := range r.static {
+
+		rex, err := regexp.Compile(s.rex)
+
+		if err != nil {
+			continue
+		}
+
+		if rex.FindString(c.Url) != "" {
+
+			path := s.path + c.Url
+
+			//If file does not exist return true anyways since it still matched the prefix
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				return true
+			}
+
+			//Send the file to the request endpoint
+			c.File(Status.Ok, path)
+
+			return true
+		}
+	}
+
+	return false
 }
