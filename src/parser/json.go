@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 )
 
-func JSON(body []byte) any {
+func JSON(body []byte) map[string]any {
 
-	var jsonbody interface{}
+	var jsonbody map[string]any
 
 	err := json.Unmarshal(body, &jsonbody)
 

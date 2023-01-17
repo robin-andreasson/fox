@@ -5,17 +5,19 @@ import (
 	"regexp"
 )
 
-//^Content-Disposition: form-data; name="(.+?)"; filename="(.+?)"$
-//^Content-Disposition: form-data; name="(.+?)"$
+const (
+	contentType_rex_s = "^Content-Type: (.+?)$"
+	hasFile_rex_s     = `^Content-Disposition: form-data; name="(.+?)"; filename="(.+?)"$`
+	noFile_rex_s      = `^Content-Disposition: form-data; name="(.+?)"$`
+)
 
 func FormData(body []byte, delimiter []byte) map[string]interface{} {
 
 	result := make(map[string]interface{})
 
-	contentType_rex := regexp.MustCompile("^Content-Type: (.+?)$")
-
-	hasFile_rex := regexp.MustCompile(`^Content-Disposition: form-data; name="(.+?)"; filename="(.+?)"$`)
-	noFile_rex := regexp.MustCompile(`^Content-Disposition: form-data; name="(.+?)"$`)
+	contentType_rex := regexp.MustCompile(contentType_rex_s)
+	hasFile_rex := regexp.MustCompile(hasFile_rex_s)
+	noFile_rex := regexp.MustCompile(noFile_rex_s)
 
 	formdata_segments := bytes.Split(body, delimiter)
 
@@ -31,6 +33,7 @@ func FormData(body []byte, delimiter []byte) map[string]interface{} {
 
 		contentType := string(formdata[2])
 
+		//Removing the funky \n at the end (I have literally no idea why its there)
 		value := formdata[3]
 
 		ct := contentType_rex.FindStringSubmatch(contentType)
@@ -40,7 +43,6 @@ func FormData(body []byte, delimiter []byte) map[string]interface{} {
 
 			name := noFile_rex.FindStringSubmatch(disposition)[1]
 
-			//Removing the funky \n at the end (I have literally no idea why its there)
 			result[name] = string(value[0 : len(value)-2])
 
 			continue
@@ -48,16 +50,23 @@ func FormData(body []byte, delimiter []byte) map[string]interface{} {
 
 		names := hasFile_rex.FindStringSubmatch(disposition)
 
+		if len(names) < 2 {
+			continue
+		}
+
 		name := names[1]
 		filename := names[2]
 
-		file_data := make(map[string]map[string]interface{})
-		file_data[name] = make(map[string]interface{})
+		name_map := make(map[string]interface{})
 
-		file_data[name]["FileName"] = value
-		file_data[name]["Data"] = []byte{13, 10}
-		file_data[name]["FileName"] = filename
-		file_data[name]["Content-Type"] = ct[1]
+		//Images have two funky \n, one at the beginning and one at the end
+		name_map["Data"] = value[2 : len(value)-2]
+		name_map["FileName"] = filename
+		name_map["Content-Type"] = ct[1]
+
+		file_data := make(map[string]interface{})
+
+		file_data[name] = name_map
 
 		result["Files"] = file_data
 	}

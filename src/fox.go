@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -29,6 +30,36 @@ type static_content struct {
 
 func NewRouter() *router {
 	return &router{}
+}
+
+/*
+Get the value from nested map interfaces
+
+type assertion shorthand
+
+error occurs if a nested target is
+*/
+func Get(target any, keys ...string) any {
+
+	if len(keys) == 0 {
+		return target
+	}
+
+	key := keys[0]
+	keys = keys[1:]
+	t := reflect.TypeOf(target)
+
+	if t == nil {
+		log.Panic(errors.New("Can't nest key \"" + key + "\" because previous key was nil inside the target map"))
+	}
+
+	if t.Kind() != reflect.Map {
+		log.Panic(errors.New(fmt.Sprint("target is not type of map but is ", reflect.TypeOf(target).Kind())))
+	}
+
+	next := target.(map[string]any)
+
+	return Get(next[key], keys...)
 }
 
 /*
@@ -115,7 +146,7 @@ func request(conn net.Conn, r router) {
 			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
 			c.setHeaders = make(map[string][]string)
 
-			fmt.Println(c.Headers)
+			fmt.Println(c.Headers["Content-Type"])
 
 			if len(body_bytes) > 0 {
 				body = append(body, body_bytes...)
@@ -187,13 +218,15 @@ func handleBody(body []byte, c *Context) {
 	switch segments[0] {
 	case "application/json":
 		c.Json = parser.JSON(body)
-		break
 	case "multipart/form-data":
 
 		delimiter := strings.Split(segments[1], "boundary=")[1]
 
 		c.FormData = parser.FormData(body, []byte("--"+delimiter))
-		break
+	case "application/x-www-form-urlencoded":
+
+		c.Form = parser.Urlencoded(string(body))
+
 	}
 }
 

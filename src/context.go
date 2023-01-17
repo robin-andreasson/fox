@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"encoding/base64"
+	"encoding/json"
 )
 
 type Context struct {
@@ -17,8 +18,8 @@ type Context struct {
 	Headers    map[string]string
 	setHeaders map[string][]string
 
-	Json     interface{}
-	Form     interface{}
+	Json     map[string]interface{}
+	Form     map[string]interface{}
 	FormData map[string]interface{}
 
 	Params map[string]string
@@ -37,19 +38,6 @@ type CookieAttributes struct {
 	Domain    string
 	SameSite  string //strict, lax or none are the only accepted values
 	ExpiresIn int
-}
-
-func (c *Context) Nested(target map[string]interface{}, keys ...string) interface{} {
-
-	fmt.Println(target)
-	if len(keys) == 0 {
-		return target
-	}
-
-	key := keys[0]
-	keys = keys[1:]
-
-	return c.Nested(target[key].(map[string]interface{}), keys...)
 }
 
 func (c *Context) Next() {
@@ -81,7 +69,7 @@ func (c *Context) Head(code int) {
 	}
 }
 
-func (c *Context) String(code int, body string) {
+func (c *Context) Text(code int, body string) {
 	if err := c.response(code, []byte(body)); err != nil {
 		log.Panic(err)
 	}
@@ -100,8 +88,20 @@ func (c *Context) File(code int, path string) {
 	}
 }
 
-func (c *Context) Status(code int) {
-	if err := c.response(code, []byte{}); err != nil {
+func (c *Context) JSON(status int, body map[string]any) {
+	bytes, err := json.Marshal(body)
+
+	if err != nil {
+		log.Panic(err)
+	}
+
+	if err := c.response(status, bytes); err != nil {
+		log.Panic(err)
+	}
+}
+
+func (c *Context) Status(status int) {
+	if err := c.response(status, []byte{}); err != nil {
 		log.Panic(err)
 	}
 }
@@ -170,13 +170,13 @@ func (c *Context) response(code int, body []byte) error {
 
 	for key, values := range c.setHeaders {
 		for _, value := range values {
-			response += fmt.Sprint(key, ": ", value, "\r\n")
+			response += key + ": " + value + "\r\n"
 		}
 	}
 
 	response_bytes := []byte(response)
 
-	if len(body) > 0 {
+	if c.Method != "HEAD" {
 
 		contentLength := []byte(fmt.Sprint("Content-Length: ", len(body), "\r\n\r\n"))
 

@@ -75,7 +75,7 @@ func (r *router) addHandler(path string, method string, stack []func(c *Context)
 		param_info := []string{param_name}
 
 		if hasRex {
-			param_info = append(param_info, param_pattern)
+			param_info = append(param_info, "^"+param_pattern+"$")
 		}
 
 		paramArr = append(paramArr, [][]string{param_info}...)

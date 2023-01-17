@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"regexp"
+	"log"
 
 	"os"
 
@@ -11,13 +11,6 @@ import (
 
 func main() {
 	r := fox.NewRouter()
-	hasFile_rex := regexp.MustCompile(`^Content-Disposition: form-data; name="(.+?)"; filename="(.+?)"$`)
-
-	result := hasFile_rex.FindStringSubmatch(`Content-Disposition: form-data; name=""test";"; filename="coolfilename"`)
-
-	for i, re := range result {
-		fmt.Println("INDEX: ", i, ": ", re)
-	}
 
 	r.Static("public")
 
@@ -46,20 +39,27 @@ func auth(c *fox.Context) {
 
 func image(c *fox.Context) {
 
-	data := c.FormData["Files"].(map[string]interface{})["name-file"].(map[string][]byte)["Data"]
+	files := fox.Get(c.FormData, "Files", "name-file")
 
-	fmt.Println(data)
+	data := fox.Get(files, "Data").([]byte)
+	filename := fox.Get(files, "FileName").(string)
 
-	c.String(fox.Status.Created, "test")
+	err := os.WriteFile(filename, data, 0777)
+
+	if err != nil {
+		log.Panic(err)
+	}
+
+	c.JSON(fox.Status.Ok, c.FormData)
 }
 
 func home(c *fox.Context) {
-	c.String(fox.Status.Ok, "<h1>Home Page</h1>")
+	c.Text(fox.Status.Ok, "<h1>Home Page</h1>")
 }
 
 func profile(c *fox.Context) {
 
-	c.String(fox.Status.Ok, "<h1>"+c.Params["name"]+"'s PROFILE PAGE!</h1>")
+	c.Text(fox.Status.Ok, "<h1>"+c.Params["name"]+"'s PROFILE PAGE!</h1>")
 }
 
 func file(c *fox.Context) {
@@ -71,5 +71,5 @@ func file(c *fox.Context) {
 
 func book(c *fox.Context) {
 
-	c.String(fox.Status.Ok, "<h1>Title: "+c.Params["title"]+" Page: "+c.Params["page"]+"</h1>")
+	c.Text(fox.Status.Ok, "<h1>Title: "+c.Params["title"]+" Page: "+c.Params["page"]+"</h1>")
 }
