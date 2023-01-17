@@ -19,8 +19,9 @@ r.Get("/", handler)
 
 //Matches with any url path that begins with /
 r.Get("/*", handler)
-//Matches with any url path that begins with /version-
-r.Get("/page-*", handler)
+//Matches with any url path that begins with /code-
+//e.g. /code-418 or /code-200/example
+r.Get("/code-*", handler)
 
 //Middleware stack
 r.Get("/auth", auth_mw, handler)
