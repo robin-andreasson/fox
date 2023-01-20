@@ -22,9 +22,11 @@ type Context struct {
 	Form     map[string]interface{}
 	FormData map[string]interface{}
 
-	Params map[string]string
-	Query  map[string]string
-	Raw    []byte
+	Params  map[string]string
+	Query   map[string]string
+	Cookies map[string]string
+
+	Raw []byte
 
 	_next bool
 	_conn net.Conn

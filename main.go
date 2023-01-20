@@ -16,6 +16,8 @@ func main() {
 
 	r.Get("/", home)
 
+	r.Get("/cookies", cookies)
+
 	r.Get("/profile/:name", auth, profile)
 
 	r.Get("/file", file)
@@ -28,13 +30,18 @@ func main() {
 	r.Listen(3000)
 }
 
+func cookies(c *fox.Context) {
+	fmt.Println(c.Headers["Cookie"])
+
+	fmt.Println(c.Cookies)
+
+	c.Status(fox.Status.ImaTeapot)
+}
+
 func auth(c *fox.Context) {
 	fmt.Println("AUTH!")
 
-	c.Cookie("test", "damn thats a good value", fox.CookieAttributes{BASE64: true, ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
-
 	c.Next()
-
 }
 
 func image(c *fox.Context) {
@@ -42,6 +49,7 @@ func image(c *fox.Context) {
 	files := fox.Get(c.FormData, "Files", "name-file")
 
 	data := fox.Get(files, "Data").([]byte)
+
 	filename := fox.Get(files, "FileName").(string)
 
 	err := os.WriteFile(filename, data, 0777)
@@ -63,6 +71,10 @@ func profile(c *fox.Context) {
 }
 
 func file(c *fox.Context) {
+
+	c.Cookie("test", "damn thats a good value", fox.CookieAttributes{BASE64: true, ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
+	c.Cookie("name", "BAD ; VALUE", fox.CookieAttributes{ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
+	c.Cookie("test2", "DAMN, GOOD VALUE", fox.CookieAttributes{ExpiresIn: 1000 * 60 * 60, SameSite: "Strict"})
 
 	dirname, _ := os.Getwd()
 

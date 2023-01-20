@@ -37,7 +37,7 @@ Get the value from nested map interfaces
 
 type assertion shorthand
 
-error occurs if a nested target is
+error occurs if the next nested target is nil or not a map
 */
 func Get(target any, keys ...string) any {
 
@@ -187,6 +187,7 @@ func (r *router) handleRequests(c Context, body []byte) {
 
 		c.Params = params
 		c.Query = queries
+		c.Cookies = parser.Cookies(c.Headers["Cookie"])
 
 		handleBody(body, &c)
 
