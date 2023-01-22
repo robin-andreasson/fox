@@ -146,8 +146,6 @@ func request(conn net.Conn, r router) {
 			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
 			c.setHeaders = make(map[string][]string)
 
-			fmt.Println(c.Headers["Content-Type"])
-
 			if len(body_bytes) > 0 {
 				body = append(body, body_bytes...)
 			}
@@ -185,6 +183,7 @@ func (r *router) handleRequests(c Context, body []byte) {
 			continue
 		}
 
+		c.Raw = body
 		c.Params = params
 		c.Query = queries
 		c.Cookies = parser.Cookies(c.Headers["Cookie"])
@@ -218,16 +217,13 @@ func handleBody(body []byte, c *Context) {
 
 	switch segments[0] {
 	case "application/json":
-		c.Json = parser.JSON(body)
+		parser.JSON(string(body), &c.Json)
+	case "application/x-www-form-urlencoded":
+		c.Form = parser.Urlencoded(string(body))
 	case "multipart/form-data":
-
 		delimiter := strings.Split(segments[1], "boundary=")[1]
 
 		c.FormData = parser.FormData(body, []byte("--"+delimiter))
-	case "application/x-www-form-urlencoded":
-
-		c.Form = parser.Urlencoded(string(body))
-
 	}
 }
 

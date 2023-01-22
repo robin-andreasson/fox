@@ -18,9 +18,9 @@ type Context struct {
 	Headers    map[string]string
 	setHeaders map[string][]string
 
-	Json     map[string]interface{}
-	Form     map[string]interface{}
-	FormData map[string]interface{}
+	Json     any
+	Form     map[string]any
+	FormData map[string]any
 
 	Params  map[string]string
 	Query   map[string]string
@@ -49,17 +49,6 @@ func (c *Context) Next() {
 func (c *Context) SetHeader(key string, value string) {
 	c.setHeaders[key] = append(c.setHeaders[key], value)
 }
-
-/*func json() {
-
-	m := map[string]interface{}
-
-	  err := json.Unmarshal([]byte(input), &m)
-	  if err != nil {
-	      panic(err)
-	  }
-	  fmt.Println(m)
-}*/
 
 func (c *Context) Head(code int) {
 	if c.Method != "HEAD" {

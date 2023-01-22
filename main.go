@@ -1,6 +1,7 @@
 package main
 
 import (
+	jseon "encoding/json"
 	"fmt"
 	"log"
 
@@ -24,6 +25,8 @@ func main() {
 
 	r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", book)
 
+	r.Get("/json", json_get)
+	r.Post("/json", json)
 	r.Post("/image", image)
 
 	fmt.Println("Starting port at", 3000)
@@ -42,6 +45,20 @@ func auth(c *fox.Context) {
 	fmt.Println("AUTH!")
 
 	c.Next()
+}
+
+func json(c *fox.Context) {
+
+	c.JSON(fox.Status.Ok, c.Json.(map[string]any))
+}
+
+func json_get(c *fox.Context) {
+	bytes, _ := os.ReadFile("./data.json")
+
+	mapper := make(map[string]any)
+	jseon.Unmarshal(bytes, &mapper)
+
+	c.JSON(fox.Status.Ok, mapper)
 }
 
 func image(c *fox.Context) {
