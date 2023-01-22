@@ -217,7 +217,10 @@ func handleBody(body []byte, c *Context) {
 
 	switch segments[0] {
 	case "application/json":
-		parser.JSON(string(body), &c.Json)
+		if err := parser.JSON(string(body), &c.Json); err != nil {
+			c.Json = make(map[string]any)
+		}
+
 	case "application/x-www-form-urlencoded":
 		c.Form = parser.Urlencoded(string(body))
 	case "multipart/form-data":

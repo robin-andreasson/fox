@@ -47,8 +47,8 @@ func getParams(path string, h_path string, h_path_rex string, h_params [][]strin
 
 	for i := 1; i < len(result); i++ {
 
-		key := decode(h_params[i-1][0])
-		value := decode(result[i])
+		key := urldecode(h_params[i-1][0])
+		value := urldecode(result[i])
 
 		if len(h_params[i-1]) > 1 {
 			rex := regexp.MustCompile("^" + h_params[i-1][1] + "$")
@@ -86,8 +86,8 @@ func getQueryStrings(query_string string, found bool) map[string]string {
 
 	for i := 0; i < length; i += 2 {
 
-		key := decode(query_seg[i])
-		value := decode(query_seg[i+1])
+		key := urldecode(query_seg[i])
+		value := urldecode(query_seg[i+1])
 
 		queries[key] = value
 	}

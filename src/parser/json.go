@@ -2,9 +2,11 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 const rex_s = `[^\s"a-zA-Z0-9{},:[\]]+|"[^"\\]*(?:\\.[^"\\]*)*"|([a-zA-Z]+)|([0-9.]+)|(,|{|}|\[|\]|:)`
@@ -99,7 +101,6 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 			} else {
 				return i, nil, nil
 			}
-
 		}
 
 		if mode == "object" {
@@ -128,13 +129,13 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 
 					name = seg
 				} else {
-					return 0, nil, errors.New("invalid syntax at " + seg)
+					return 0, nil, errors.New("latest token is invalid")
 				}
 
 			} else if !keyword[previous] {
 
 				if _, valid := Value(previous); !valid {
-					return 0, nil, errors.New("invalid syntax at " + seg + ", previous keyword is wrong (" + previous + ")")
+					return 0, nil, errors.New("invalid name or value at " + seg)
 				}
 			}
 
@@ -197,7 +198,15 @@ func Value(seg string) (any, bool) {
 	}
 
 	if isStringLiteral(seg) {
-		return seg[1 : len(seg)-1], true
+		value := seg[1 : len(seg)-1]
+
+		if len(value) != 0 && value[0] == 'P' {
+			fmt.Println(string(value))
+		}
+
+		value = strings.Replace(value, "\\", "", -1)
+
+		return string(value), true
 	}
 
 	if integer, err := strconv.Atoi(seg); err == nil {

@@ -26,7 +26,11 @@ func main() {
 	r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", book)
 
 	r.Get("/json", json_get)
+
 	r.Post("/json", json)
+
+	r.Post("/urlencoded", urlencoded)
+
 	r.Post("/image", image)
 
 	fmt.Println("Starting port at", 3000)
@@ -48,8 +52,13 @@ func auth(c *fox.Context) {
 }
 
 func json(c *fox.Context) {
-
 	c.JSON(fox.Status.Ok, c.Json.(map[string]any))
+}
+
+func urlencoded(c *fox.Context) {
+
+	fmt.Println(string(c.Raw))
+	c.Status(fox.Status.Ok)
 }
 
 func json_get(c *fox.Context) {
