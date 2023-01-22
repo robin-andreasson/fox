@@ -4,6 +4,7 @@ import (
 	jseon "encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 
 	"os"
 
@@ -12,6 +13,11 @@ import (
 
 func main() {
 	r := fox.NewRouter()
+
+	rex := regexp.MustCompile(`\[(.+?)\]`)
+
+	fmt.Println(rex.FindAllStringSubmatch("person[name][firstname]", -1))
+	fmt.Println(len(rex.FindAllStringSubmatch("person[name][firstname]", -1)))
 
 	r.Static("public")
 
@@ -52,12 +58,16 @@ func auth(c *fox.Context) {
 }
 
 func json(c *fox.Context) {
-	c.JSON(fox.Status.Ok, c.Json.(map[string]any))
+
+	fmt.Println(string(c.Raw))
+
+	c.Status(fox.Status.Ok)
 }
 
 func urlencoded(c *fox.Context) {
 
-	fmt.Println(string(c.Raw))
+	fmt.Println(c.Form)
+
 	c.Status(fox.Status.Ok)
 }
 
