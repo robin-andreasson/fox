@@ -17,7 +17,10 @@ func Headers(raw string) (string, string, map[string]string) {
 	for i := 1; i < len(raw_headers); i++ {
 		segments := strings.Split(raw_headers[i], ": ")
 
-		headers[segments[0]] = segments[1]
+		header := urldecode(segments[0])
+		value := urldecode(segments[1])
+
+		headers[header] = value
 	}
 
 	return route[0], route[1], headers

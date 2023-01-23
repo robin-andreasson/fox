@@ -64,7 +64,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 		if isOpening[seg] {
 
 			if name != "" {
-				name = name[1 : len(name)-1]
+				name = unicodedecode(name[1 : len(name)-1])
 			}
 
 			*stack = append(*stack, seg)
@@ -95,8 +95,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 
 			*stack = (*stack)[0 : len(*stack)-1]
 
-			if reflect.TypeOf(*body).Kind() == reflect.Slice ||
-				reflect.TypeOf(*body).Kind() == reflect.Array {
+			if isArray(*body) {
 				return i, *body, nil
 			} else {
 				return i, nil, nil
@@ -198,15 +197,11 @@ func Value(seg string) (any, bool) {
 	}
 
 	if isStringLiteral(seg) {
-		value := seg[1 : len(seg)-1]
-
-		if len(value) != 0 && value[0] == 'P' {
-			fmt.Println(string(value))
-		}
+		value := unicodedecode(seg[1 : len(seg)-1])
 
 		value = strings.Replace(value, "\\", "", -1)
 
-		return string(value), true
+		return value, true
 	}
 
 	if integer, err := strconv.Atoi(seg); err == nil {
@@ -251,4 +246,66 @@ func next_nestType(mode string, token string, name string, body *any) *any {
 	}
 
 	return &next
+}
+
+func JSON_Marshal(v any) string {
+	if !isMap(v) && !isArray(v) {
+		return fmt.Sprint(v)
+	}
+
+	s := ""
+
+	if isMap(v) {
+		s += "{"
+
+		i := 0
+		for name, value := range v.(map[string]any) {
+			comma := ""
+
+			if i == len(v.(map[string]any)) {
+				comma = ","
+			}
+
+			var next any
+
+			if isMap(value) {
+				next = value.(map[string]any)
+			} else {
+				next = value
+			}
+
+			s +=
+				name +
+					": " +
+					JSON_Marshal(next) +
+					comma
+
+			i++
+		}
+
+		s += "}"
+	} else if isArray(v) {
+		s += "["
+
+		s += "]"
+	}
+
+	return s
+}
+
+func isMap(v any) bool {
+	if reflect.TypeOf(v).Kind() != reflect.Map {
+		return false
+	}
+
+	return true
+}
+
+func isArray(v any) bool {
+	if reflect.TypeOf(v).Kind() != reflect.Array &&
+		reflect.TypeOf(v).Kind() != reflect.Slice {
+		return false
+	}
+
+	return true
 }

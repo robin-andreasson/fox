@@ -39,14 +39,16 @@ func FirstInstance(data []byte, target string) ([]byte, []byte) {
 
 func urldecode(s string) string {
 
-	offset := 0
+	ns := ""
 
-	for index, char := range s {
-		if char != '%' {
+	for i := 0; i < len(s); i++ {
+		char := s[i]
+
+		if char != '%' || i+3 > len(s) {
+			ns += string(char)
+
 			continue
 		}
-
-		i := index - offset
 
 		hex := s[i+1 : i+3]
 
@@ -56,15 +58,46 @@ func urldecode(s string) string {
 			continue
 		}
 
-		seg1 := s[0:i]
-		seg2 := s[i+3:]
+		i += 2
 
-		offset += 2
-
-		s = seg1 + string(decimal) + seg2
+		ns += string(decimal)
 	}
 
-	return s
+	return ns
+}
+
+func unicodedecode(s string) string {
+	ns := ""
+
+	for i := 0; i < len(s); i++ {
+		char := s[i]
+
+		if char != '\\' || i+6 > len(s) {
+			ns += string(char)
+
+			continue
+		}
+
+		unicode := s[i+1 : i+6]
+
+		if unicode[0] != 'u' {
+			continue
+		}
+
+		code := unicode[1:]
+
+		integer, err := strconv.ParseInt(code, 16, 64)
+
+		if err != nil {
+			continue
+		}
+
+		i += 5
+
+		ns += string(integer)
+	}
+
+	return ns
 }
 
 //first index: starts directly at that index
