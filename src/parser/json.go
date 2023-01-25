@@ -21,7 +21,7 @@ var keywords = map[string]map[string]bool{
 var isOpening = map[string]bool{"{": true, "[": true}
 var isClosing = map[string]bool{"}": true, "]": true}
 
-func JSON(str string, output *any) error {
+func JSONUnmarshal(str string, output *any) error {
 
 	rex := regexp.MustCompile(rex_s)
 
@@ -82,7 +82,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 			}
 
 			if arr != nil {
-				setValue(mode, name, arr, body)
+				setArrValue(mode, name, arr, body)
 			}
 
 			i = index
@@ -112,7 +112,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 
 				if previous == ":" {
 
-					value, valid := Value(seg)
+					value, valid := convertJsonValue(seg)
 
 					if !valid {
 						return 0, nil, errors.New("invalid value at " + seg)
@@ -137,7 +137,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 
 			} else if !keyword[previous] {
 
-				if _, valid := Value(previous); !valid {
+				if _, valid := convertJsonValue(previous); !valid {
 					return 0, nil, errors.New("invalid name or value at " + seg)
 				}
 			}
@@ -147,7 +147,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 
 		if seg == "," {
 
-			if _, valid := Value(previous); !valid && previous != "}" && previous != "]" {
+			if _, valid := convertJsonValue(previous); !valid && previous != "}" && previous != "]" {
 				return 0, nil, errors.New("invalid syntax inside array")
 			}
 
@@ -159,7 +159,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 			return 0, nil, errors.New("invalid previous token")
 		}
 
-		value, valid := Value(seg)
+		value, valid := convertJsonValue(seg)
 
 		if !valid {
 			return 0, nil, errors.New("invalid value inside array")
@@ -186,7 +186,7 @@ func isStringLiteral(seg string) bool {
 	return true
 }
 
-func Value(seg string) (any, bool) {
+func convertJsonValue(seg string) (any, bool) {
 	//If null then return nil since thats the correct equivalent
 	if seg == "null" {
 		return nil, true
@@ -219,11 +219,11 @@ func Value(seg string) (any, bool) {
 	return nil, false
 }
 
-func setValue(mode string, name string, value any, body *any) {
+func setArrValue(mode string, name string, arr any, body *any) {
 	if mode == "array" {
-		(*body).([]any)[len((*body).([]any))-1] = value
+		(*body).([]any)[len((*body).([]any))-1] = arr
 	} else {
-		(*body).(map[string]any)[name] = value
+		(*body).(map[string]any)[name] = arr
 	}
 }
 
@@ -254,7 +254,7 @@ func nest(mode string, token string, name string, body *any) *any {
 
 func JSONMarshal(v any) (string, error) {
 	if !isMap(v) && !isArray(v) {
-		value, err := jsonValues(v)
+		value, err := convertGoValues(v)
 
 		if err != nil {
 			return "", err
@@ -295,7 +295,7 @@ func JSONMarshal(v any) (string, error) {
 		}
 
 		s += "}"
-	} else if isArray(v) {
+	} else {
 		s += "["
 
 		comma := ""
@@ -311,7 +311,7 @@ func JSONMarshal(v any) (string, error) {
 
 				value = result
 			} else {
-				result, err := jsonValues(value)
+				result, err := convertGoValues(value)
 
 				if err != nil {
 					return "", err
@@ -331,7 +331,7 @@ func JSONMarshal(v any) (string, error) {
 	return s, nil
 }
 
-func jsonValues(v any) (string, error) {
+func convertGoValues(v any) (string, error) {
 
 	if v == nil {
 		return "null", nil

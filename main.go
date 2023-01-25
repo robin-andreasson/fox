@@ -4,7 +4,6 @@ import (
 	jseon "encoding/json"
 	"fmt"
 	"log"
-
 	"os"
 
 	"github.com/robin-andreasson/fox"
@@ -53,9 +52,9 @@ func auth(c *fox.Context) {
 
 func json(c *fox.Context) {
 
-	fmt.Println(c.Json)
+	fmt.Println(c.Body)
 
-	c.JSON(fox.Status.Ok, c.Json.(map[string]any))
+	c.JSON(fox.Status.Ok, c.Body.(map[string]any))
 }
 
 func urlencoded(c *fox.Context) {

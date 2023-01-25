@@ -217,8 +217,8 @@ func handleBody(body []byte, c *Context) {
 
 	switch segments[0] {
 	case "application/json":
-		if err := parser.JSON(string(body), &c.Json); err != nil {
-			c.Json = make(map[string]any)
+		if err := parser.JSONUnmarshal(string(body), &c.Body); err != nil {
+			c.Body = make(map[string]any)
 		}
 
 	case "application/x-www-form-urlencoded":

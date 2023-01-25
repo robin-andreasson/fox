@@ -67,37 +67,39 @@ func urldecode(s string) string {
 }
 
 func unicodedecode(s string) string {
-	ns := ""
 
-	for i := 0; i < len(s); i++ {
-		char := s[i]
+	offset := 0
+
+	for index, char := range s {
+
+		i := index - offset
 
 		if char != '\\' || i+6 > len(s) {
-			ns += string(char)
+			continue
+		}
 
+		if s[i+1] != 'u' {
 			continue
 		}
 
 		unicode := s[i+1 : i+6]
 
-		if unicode[0] != 'u' {
-			continue
-		}
-
 		code := unicode[1:]
 
-		integer, err := strconv.ParseInt(code, 16, 64)
+		decimal, err := strconv.ParseInt(code, 16, 32)
 
 		if err != nil {
 			continue
 		}
 
-		i += 5
+		decimal_s := string(decimal)
 
-		ns += string(integer)
+		offset += 6 - len(decimal_s)
+
+		s = s[0:i] + decimal_s + s[i+6:]
 	}
 
-	return ns
+	return s
 }
 
 //first index: starts directly at that index

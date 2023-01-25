@@ -19,7 +19,7 @@ type Context struct {
 	Headers    map[string]string
 	setHeaders map[string][]string
 
-	Json     any
+	Body     any
 	Form     map[string]any
 	FormData map[string]any
 
