@@ -65,9 +65,9 @@ func Get(target any, keys ...string) any {
 /*
 Statically serve files
 
-"name" parameter is the name of the target folder
+name is the name of the target directory
 
-"relative_path" parameter is the path relative to the target folder, will use name if not specified.
+relative_path is the path relative to the target folder, will use name if not specified.
 
 parameter is variadic but only allows one input as the purpose is only to make it optional
 */
@@ -166,11 +166,6 @@ func request(conn net.Conn, r router) {
 
 func (r *router) handleRequests(c Context, body []byte) {
 
-	//Checks if the url path is related to any of the static handlers
-	if r.handleStatic(&c) {
-		return
-	}
-
 	for _, handler := range r.handlers {
 
 		if handler.method != c.Method {
@@ -204,6 +199,11 @@ func (r *router) handleRequests(c Context, body []byte) {
 			c._next = false
 		}
 
+		return
+	}
+
+	//Checks if the url path is related to any of the static handlers
+	if r.handleStatic(&c) {
 		return
 	}
 }
