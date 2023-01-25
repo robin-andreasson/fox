@@ -4,7 +4,6 @@ import (
 	jseon "encoding/json"
 	"fmt"
 	"log"
-	"reflect"
 
 	"os"
 
@@ -54,14 +53,12 @@ func auth(c *fox.Context) {
 
 func json(c *fox.Context) {
 
-	fmt.Println(JSON_Marshal(c.Json))
+	fmt.Println(c.Json)
 
 	c.JSON(fox.Status.Ok, c.Json.(map[string]any))
 }
 
 func urlencoded(c *fox.Context) {
-
-	fmt.Println(c.Form)
 
 	c.Status(fox.Status.Ok)
 }
@@ -90,68 +87,6 @@ func image(c *fox.Context) {
 	}
 
 	c.JSON(fox.Status.Ok, c.FormData)
-}
-
-func JSON_Marshal(v any) string {
-	if !isMap(v) && !isArray(v) {
-		return Value(v)
-	}
-
-	s := ""
-
-	if isMap(v) {
-		s += "{"
-
-		i := 0
-		for name, value := range v.(map[string]any) {
-			comma := ""
-
-			if i != len(v.(map[string]any)) {
-				comma = ","
-			}
-
-			var next any
-
-			if isMap(value) {
-				next = value.(map[string]any)
-			} else {
-				next = value
-			}
-
-			s +=
-				`"` + name + `"` +
-					": " +
-					JSON_Marshal(next) +
-					comma
-
-			i++
-		}
-
-		s += "}"
-	} else if isArray(v) {
-		s += "["
-
-		s += "]"
-	}
-
-	return s
-}
-
-func isMap(v any) bool {
-	if reflect.TypeOf(v).Kind() != reflect.Map {
-		return false
-	}
-
-	return true
-}
-
-func isArray(v any) bool {
-	if reflect.TypeOf(v).Kind() != reflect.Array &&
-		reflect.TypeOf(v).Kind() != reflect.Slice {
-		return false
-	}
-
-	return true
 }
 
 func home(c *fox.Context) {

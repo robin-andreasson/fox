@@ -226,7 +226,7 @@ func handleBody(body []byte, c *Context) {
 	case "multipart/form-data":
 		delimiter := strings.Split(segments[1], "boundary=")[1]
 
-		c.FormData = parser.FormData(body, []byte("--"+delimiter))
+		c.FormData = parser.FormData(body, []byte("--"+delimiter)).(map[string]any)
 	}
 }
 

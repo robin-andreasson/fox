@@ -15,10 +15,14 @@ func Headers(raw string) (string, string, map[string]string) {
 	headers["Version"] = route[2]
 
 	for i := 1; i < len(raw_headers); i++ {
-		segments := strings.Split(raw_headers[i], ": ")
+		header, value, found := strings.Cut(raw_headers[i], ": ")
 
-		header := urldecode(segments[0])
-		value := urldecode(segments[1])
+		if !found {
+			continue
+		}
+
+		header = urldecode(header)
+		value = urldecode(value)
 
 		headers[header] = value
 	}

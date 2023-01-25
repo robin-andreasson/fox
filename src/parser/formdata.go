@@ -11,9 +11,9 @@ const (
 	noFile_rex_s      = `^Content-Disposition: form-data; name="(.+?)"$`
 )
 
-func FormData(body []byte, delimiter []byte) map[string]interface{} {
+func FormData(body []byte, delimiter []byte) any {
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 
 	contentType_rex := regexp.MustCompile(contentType_rex_s)
 	hasFile_rex := regexp.MustCompile(hasFile_rex_s)
@@ -57,18 +57,21 @@ func FormData(body []byte, delimiter []byte) map[string]interface{} {
 		name := names[1]
 		filename := names[2]
 
-		name_map := make(map[string]interface{})
+		name_map := make(map[string]any)
 
 		//Images have two funky \n, one at the beginning and one at the end
 		name_map["Data"] = value[2 : len(value)-2]
 		name_map["FileName"] = filename
 		name_map["Content-Type"] = ct[1]
 
-		file_data := make(map[string]interface{})
-
+		file_data := make(map[string]any)
 		file_data[name] = name_map
 
-		result["Files"] = file_data
+		if result["Files"] == nil {
+			result["Files"] = file_data
+		} else {
+			result["Files"].(map[string]any)[name] = file_data
+		}
 	}
 
 	return result

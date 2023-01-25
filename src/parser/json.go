@@ -27,6 +27,10 @@ func JSON(str string, output *any) error {
 
 	segments := rex.FindAllString(str, -1)
 
+	if len(segments) < 1 {
+		return errors.New("nothing to parse")
+	}
+
 	opening := segments[0]
 
 	if opening == "{" {
@@ -69,7 +73,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 
 			*stack = append(*stack, seg)
 
-			next := next_nestType(mode, seg, name, body)
+			next := nest(mode, seg, name, body)
 
 			index, arr, err := traverse(segments, stack, i+1, next)
 
@@ -199,7 +203,7 @@ func Value(seg string) (any, bool) {
 	if isStringLiteral(seg) {
 		value := unicodedecode(seg[1 : len(seg)-1])
 
-		value = strings.Replace(value, "\\", "", -1)
+		value = strings.Replace(value, `"`, `\"`, -1)
 
 		return value, true
 	}
@@ -223,7 +227,7 @@ func setValue(mode string, name string, value any, body *any) {
 	}
 }
 
-func next_nestType(mode string, token string, name string, body *any) *any {
+func nest(mode string, token string, name string, body *any) *any {
 
 	var nest any
 	var next any
@@ -248,9 +252,15 @@ func next_nestType(mode string, token string, name string, body *any) *any {
 	return &next
 }
 
-func JSON_Marshal(v any) string {
+func JSONMarshal(v any) (string, error) {
 	if !isMap(v) && !isArray(v) {
-		return fmt.Sprint(v)
+		value, err := jsonValues(v)
+
+		if err != nil {
+			return "", err
+		}
+
+		return value, nil
 	}
 
 	s := ""
@@ -258,13 +268,9 @@ func JSON_Marshal(v any) string {
 	if isMap(v) {
 		s += "{"
 
-		i := 0
-		for name, value := range v.(map[string]any) {
-			comma := ""
+		comma := ""
 
-			if i == len(v.(map[string]any)) {
-				comma = ","
-			}
+		for name, value := range v.(map[string]any) {
 
 			var next any
 
@@ -274,34 +280,99 @@ func JSON_Marshal(v any) string {
 				next = value
 			}
 
-			s +=
-				name +
-					": " +
-					JSON_Marshal(next) +
-					comma
+			result, err := JSONMarshal(next)
 
-			i++
+			if err != nil {
+				return "", err
+			}
+
+			s += comma +
+				`"` + name + `"` +
+				":" +
+				result
+
+			comma = ","
 		}
 
 		s += "}"
 	} else if isArray(v) {
 		s += "["
 
+		comma := ""
+
+		for _, value := range v.([]any) {
+
+			if isMap(value) {
+				result, err := JSONMarshal(value)
+
+				if err != nil {
+					return "", err
+				}
+
+				value = result
+			} else {
+				result, err := jsonValues(value)
+
+				if err != nil {
+					return "", err
+				}
+
+				value = result
+			}
+
+			s += comma + value.(string)
+
+			comma = ","
+		}
+
 		s += "]"
 	}
 
-	return s
+	return s, nil
+}
+
+func jsonValues(v any) (string, error) {
+
+	if v == nil {
+		return "null", nil
+	}
+
+	if reflect.TypeOf(v).Kind() == reflect.String {
+		return `"` + v.(string) + `"`, nil
+	}
+
+	if v == true {
+		return "true", nil
+	}
+
+	if v == false {
+		return "false", nil
+	}
+
+	if reflect.TypeOf(v).Kind() == reflect.Int {
+		return fmt.Sprintf("%v", v), nil
+	}
+
+	if reflect.TypeOf(v).Kind() == reflect.Float64 {
+		return fmt.Sprintf("%v", v), nil
+	}
+
+	return "", errors.New("invalid json value")
 }
 
 func isMap(v any) bool {
-	if reflect.TypeOf(v).Kind() != reflect.Map {
+	if v == nil {
 		return false
 	}
 
-	return true
+	return reflect.TypeOf(v).Kind() == reflect.Map
 }
 
 func isArray(v any) bool {
+	if v == nil {
+		return false
+	}
+
 	if reflect.TypeOf(v).Kind() != reflect.Array &&
 		reflect.TypeOf(v).Kind() != reflect.Slice {
 		return false

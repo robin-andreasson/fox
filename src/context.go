@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"encoding/base64"
-	"encoding/json"
+
+	"github.com/robin-andreasson/fox/parser"
 )
 
 type Context struct {
@@ -80,13 +81,15 @@ func (c *Context) File(code int, path string) {
 }
 
 func (c *Context) JSON(status int, body map[string]any) {
-	bytes, err := json.Marshal(body)
+	s, err := parser.JSONMarshal(body)
+
+	fmt.Println(s)
 
 	if err != nil {
 		log.Panic(err)
 	}
 
-	if err := c.response(status, bytes); err != nil {
+	if err := c.response(status, []byte(s)); err != nil {
 		log.Panic(err)
 	}
 }
