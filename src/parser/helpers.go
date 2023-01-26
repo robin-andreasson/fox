@@ -5,7 +5,7 @@ import (
 )
 
 // Splits array at a specific target
-func FirstInstance(data []byte, target string) ([]byte, []byte) {
+func FirstInstance(data []byte, target string) ([]byte, []byte, bool) {
 
 	index := -1
 	found := 0
@@ -13,11 +13,11 @@ func FirstInstance(data []byte, target string) ([]byte, []byte) {
 
 	for i := 0; i < len(data); i++ {
 
-		if data[i] == target[found%targetlength] {
+		if data[i] == target[found] {
 			found++
 
 			if found == targetlength {
-				index = i + 1 - targetlength
+				index = i + 1
 				break
 			}
 
@@ -27,10 +27,10 @@ func FirstInstance(data []byte, target string) ([]byte, []byte) {
 	}
 
 	if index == -1 {
-		return nil, nil
+		return nil, nil, false
 	}
 
-	return data[0:index], data[index:]
+	return data[0 : index-targetlength], data[index:], true
 }
 
 func urldecode(s string) string {

@@ -20,10 +20,10 @@ type router struct {
 	handlers []handler
 	prefix   string
 
-	static map[string]static_content
+	static map[string]static
 }
 
-type static_content struct {
+type static struct {
 	path string
 	rex  string
 }
@@ -94,12 +94,12 @@ func (r *router) Static(name string, relative_path ...string) {
 	}
 
 	if r.static == nil {
-		r.static = map[string]static_content{}
+		r.static = map[string]static{}
 	}
 
 	rex := `\/` + name + `\/.+`
 
-	r.static[name] = static_content{filepath.Dir(path), rex}
+	r.static[name] = static{filepath.Dir(path), rex}
 }
 
 func (r *router) Listen(port int) error {
@@ -136,13 +136,12 @@ func request(conn net.Conn, r router) {
 
 		if len(c.Headers) == 0 {
 
-			headers_bytes, body_bytes := parser.FirstInstance(temp_buffer, "\r\n\r\n")
+			headers_bytes, body_bytes, found := parser.FirstInstance(temp_buffer, "\r\n\r\n")
 
-			if headers_bytes == nil {
+			if !found {
 				continue
 			}
 
-			//set context values
 			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
 			c.setHeaders = make(map[string][]string)
 
