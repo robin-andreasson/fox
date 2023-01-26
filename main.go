@@ -5,80 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"reflect"
-	"regexp"
-	"strings"
 
 	"github.com/robin-andreasson/fox"
 )
 
-const (
-	rex_s_str = "&|="
-	rex_n_str = `\[(.+?)\]`
-)
-
-func Urlencoded(s string) map[string]any {
-	body := make(map[string]any)
-
-	rex_s := regexp.MustCompile(rex_s_str)
-	rex_n := regexp.MustCompile(rex_n_str)
-
-	seg := rex_s.Split(s, -1)
-
-	for i := 0; i < len(seg); i += 2 {
-
-		name := seg[i]
-		value := seg[i+1]
-
-		nestedkeys := rex_n.FindAllStringSubmatch(name, -1)
-
-		//if there are nested keys
-		if len(nestedkeys) != 0 {
-
-			n, _, _ := strings.Cut(name, "[")
-
-			if body[n] == nil {
-				body[n] = make(map[string]any)
-			}
-
-			body[n] = getNestedKeys(nestedkeys, value, body[n])
-
-			continue
-		}
-
-		body[name] = value
-	}
-
-	return body
-}
-
-func getNestedKeys(names [][]string, value string, body any) any {
-	if len(names) == 0 {
-		return value
-	}
-
-	name := names[0][1]
-	names = names[1:]
-
-	next := body.(map[string]any)
-
-	if next[name] == nil || reflect.TypeOf(next[name]).Kind() != reflect.Map {
-		next[name] = make(map[string]any)
-	}
-
-	nested_value := getNestedKeys(names, value, next[name])
-
-	next[name] = nested_value
-
-	return body
-}
-
 func main() {
 	r := fox.NewRouter()
-
-	s := Urlencoded("person[firstname]=robin&person[lastname]=andreasson")
-
-	fmt.Println(s)
 
 	r.Static("public")
 
@@ -127,7 +59,9 @@ func json(c *fox.Context) {
 
 func urlencoded(c *fox.Context) {
 
-	c.Status(fox.Status.Ok)
+	fmt.Println(c.Body)
+
+	c.JSON(fox.Status.Ok, c.Body)
 }
 
 func json_get(c *fox.Context) {
@@ -141,7 +75,7 @@ func json_get(c *fox.Context) {
 
 func image(c *fox.Context) {
 
-	files := fox.Get(c.FormData, "Files", "name-file")
+	files := fox.Get(c.Body, "Files", "name-file")
 
 	data := fox.Get(files, "Data").([]byte)
 
@@ -153,7 +87,7 @@ func image(c *fox.Context) {
 		log.Panic(err)
 	}
 
-	c.JSON(fox.Status.Ok, c.FormData)
+	c.JSON(fox.Status.Ok, c.Body)
 }
 
 func home(c *fox.Context) {

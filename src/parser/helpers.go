@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"reflect"
 	"strconv"
 )
 
@@ -96,6 +97,49 @@ func unicodedecode(s string) string {
 	}
 
 	return s
+}
+
+func IsMap(v any) bool {
+	if v == nil {
+		return false
+	}
+
+	return reflect.TypeOf(v).Kind() == reflect.Map
+}
+
+func IsArray(v any) bool {
+	if v == nil {
+		return false
+	}
+
+	t := reflect.TypeOf(v).Kind()
+
+	if t != reflect.Array && t != reflect.Slice {
+		return false
+	}
+
+	return true
+}
+
+func isUint8Array(v any) bool {
+	if v == nil {
+		return false
+	}
+
+	return reflect.TypeOf(v).Elem().Kind() == reflect.Uint8
+}
+
+func getNumber(v string) (any, bool) {
+
+	if integer, err := strconv.Atoi(v); err == nil {
+		return integer, true
+	}
+
+	if f, err := strconv.ParseFloat(v, 64); err == nil {
+		return f, true
+	}
+
+	return nil, false
 }
 
 //first index: starts directly at that index

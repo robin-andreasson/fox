@@ -221,11 +221,11 @@ func handleBody(body []byte, c *Context) {
 		}
 
 	case "application/x-www-form-urlencoded":
-		c.Form = parser.Urlencoded(string(body))
+		c.Body = parser.Urlencoded(string(body))
 	case "multipart/form-data":
 		delimiter := strings.Split(segments[1], "boundary=")[1]
 
-		c.FormData = parser.FormData(body, []byte("--"+delimiter)).(map[string]any)
+		c.Body = parser.FormData(body, []byte("--"+delimiter)).(map[string]any)
 	}
 }
 

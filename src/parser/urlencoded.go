@@ -29,12 +29,14 @@ func Urlencoded(s string) map[string]any {
 		//if there are nested keys
 		if len(nestedkeys) != 0 {
 
-			n, _, _ := strings.Cut(name, "[")
+			k, _, _ := strings.Cut(name, "[")
 
-			body[n] = make(map[string]any)
-			next := body[n]
+			if body[k] == nil || reflect.TypeOf(body[k]).Kind() != reflect.Map {
+				body[k] = make(map[string]any)
+			}
 
-			nested(nestedkeys, value, &next)
+			body[k] = getNestedKeys(nestedkeys, value, body[k])
+
 			continue
 		}
 
@@ -44,18 +46,32 @@ func Urlencoded(s string) map[string]any {
 	return body
 }
 
-func nested(names [][]string, value string, body *any) {
+func getNestedKeys(names [][]string, value string, body any) any {
+	if len(names) == 0 {
+		return convertValue(value)
+	}
 
 	name := names[0][1]
 	names = names[1:]
 
-	t := (*body).(map[string]any)[name]
+	next := body.(map[string]any)[name]
 
-	if t == nil || reflect.TypeOf(t).Kind() != reflect.Map {
-		(*body).(map[string]any)[name] = make(map[string]any)
+	if next == nil || reflect.TypeOf(next).Kind() != reflect.Map {
+		next = make(map[string]any)
 	}
 
-	next := (*body).(map[string]any)[name]
+	nested_value := getNestedKeys(names, value, next)
 
-	nested(names, value, &next)
+	body.(map[string]any)[name] = nested_value
+
+	return body
+}
+
+func convertValue(v string) any {
+
+	if i, isNumber := getNumber(v); isNumber {
+		return i
+	}
+
+	return v
 }

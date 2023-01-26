@@ -1,11 +1,11 @@
 package parser
 
 import (
+	b64 "encoding/base64"
 	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -99,7 +99,7 @@ func traverse(segments []string, stack *[]string, startIndex int, body *any) (in
 
 			*stack = (*stack)[0 : len(*stack)-1]
 
-			if isArray(*body) {
+			if IsArray(*body) {
 				return i, *body, nil
 			} else {
 				return i, nil, nil
@@ -208,12 +208,8 @@ func convertJsonValue(seg string) (any, bool) {
 		return value, true
 	}
 
-	if integer, err := strconv.Atoi(seg); err == nil {
-		return integer, true
-	}
-
-	if f, err := strconv.ParseFloat(seg, 64); err == nil {
-		return f, true
+	if i, isNumber := getNumber(seg); isNumber {
+		return i, true
 	}
 
 	return nil, false
@@ -253,7 +249,7 @@ func nest(mode string, token string, name string, body *any) *any {
 }
 
 func JSONMarshal(v any) (string, error) {
-	if !isMap(v) && !isArray(v) {
+	if !IsMap(v) && !IsArray(v) {
 		value, err := convertGoValues(v)
 
 		if err != nil {
@@ -265,7 +261,7 @@ func JSONMarshal(v any) (string, error) {
 
 	s := ""
 
-	if isMap(v) {
+	if IsMap(v) {
 		s += "{"
 
 		comma := ""
@@ -274,7 +270,7 @@ func JSONMarshal(v any) (string, error) {
 
 			var next any
 
-			if isMap(value) {
+			if IsMap(value) {
 				next = value.(map[string]any)
 			} else {
 				next = value
@@ -296,13 +292,19 @@ func JSONMarshal(v any) (string, error) {
 
 		s += "}"
 	} else {
+		if isUint8Array(v) {
+			b64str := b64.StdEncoding.EncodeToString(v.([]uint8))
+
+			return b64str, nil
+		}
+
 		s += "["
 
 		comma := ""
 
 		for _, value := range v.([]any) {
 
-			if isMap(value) {
+			if IsMap(value) {
 				result, err := JSONMarshal(value)
 
 				if err != nil {
@@ -358,25 +360,4 @@ func convertGoValues(v any) (string, error) {
 	}
 
 	return "", errors.New("invalid json value")
-}
-
-func isMap(v any) bool {
-	if v == nil {
-		return false
-	}
-
-	return reflect.TypeOf(v).Kind() == reflect.Map
-}
-
-func isArray(v any) bool {
-	if v == nil {
-		return false
-	}
-
-	if reflect.TypeOf(v).Kind() != reflect.Array &&
-		reflect.TypeOf(v).Kind() != reflect.Slice {
-		return false
-	}
-
-	return true
 }

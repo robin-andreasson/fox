@@ -19,9 +19,7 @@ type Context struct {
 	Headers    map[string]string
 	setHeaders map[string][]string
 
-	Body     any
-	Form     map[string]any
-	FormData map[string]any
+	Body any
 
 	Params  map[string]string
 	Query   map[string]string
@@ -80,10 +78,13 @@ func (c *Context) File(code int, path string) {
 	}
 }
 
-func (c *Context) JSON(status int, body map[string]any) {
-	s, err := parser.JSONMarshal(body)
+func (c *Context) JSON(status int, body any) {
 
-	fmt.Println(s)
+	if !parser.IsMap(body) {
+		log.Panic("invalid type for body, expected map")
+	}
+
+	s, err := parser.JSONMarshal(body)
 
 	if err != nil {
 		log.Panic(err)
