@@ -54,12 +54,27 @@ func json(c *fox.Context) {
 
 	fmt.Println(c.Body)
 
+	firstname := fox.Get(c.Body, "person", "firstname")
+	lastname := fox.Get(c.Body, "person", "lastname")
+
+	arr := fox.Get(c.Body, "test", "arr")
+
+	fmt.Println(firstname)
+	fmt.Println(lastname)
+	fmt.Println(arr)
+
 	c.JSON(fox.Status.Ok, c.Body.(map[string]any))
 }
 
 func urlencoded(c *fox.Context) {
 
 	fmt.Println(c.Body)
+
+	firstname := fox.Get(c.Body, "person", "firstname")
+	lastname := fox.Get(c.Body, "person", "lastname")
+
+	fmt.Println(firstname)
+	fmt.Println(lastname)
 
 	c.JSON(fox.Status.Ok, c.Body)
 }
