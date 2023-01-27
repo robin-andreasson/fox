@@ -32,6 +32,10 @@ func NewRouter() *router {
 	return &router{}
 }
 
+func (r *router) Group(group string) {
+
+}
+
 /*
 Get the value from nested map interfaces
 
@@ -49,8 +53,8 @@ func Get(target any, keys ...string) any {
 	keys = keys[1:]
 	t := reflect.TypeOf(target)
 
-	if t == nil {
-		log.Panic(errors.New("Can't nest key \"" + key + "\" because previous key was nil inside the target map"))
+	if target == nil {
+		log.Panic(errors.New("Can't nest key \"" + key + "\" because key was nil inside the target map"))
 	}
 
 	if t.Kind() != reflect.Map {

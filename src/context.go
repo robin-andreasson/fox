@@ -80,8 +80,8 @@ func (c *Context) File(code int, path string) {
 
 func (c *Context) JSON(status int, body any) {
 
-	if !parser.IsMap(body) {
-		log.Panic("invalid type for body, expected map")
+	if !parser.IsMap(body) && !parser.IsArray(body) {
+		log.Panic("invalid type for body, expected map or array/slice")
 	}
 
 	s, err := parser.JSONMarshal(body)
@@ -147,7 +147,7 @@ func (c *Context) Cookie(name string, value string, attributes CookieAttributes)
 	case "":
 		break
 	default:
-		log.Panic(fmt.Errorf("samesite attribute can only be the values 'strict', 'lax' and 'none'"))
+		log.Panic(fmt.Errorf("samesite attribute can only have the values 'Strict', 'Lax' and 'None'"))
 	}
 
 	c.SetHeader("Set-Cookie", cookie)
