@@ -292,8 +292,10 @@ func JSONMarshal(v any) (string, error) {
 
 		s += "}"
 	} else {
-		if isUint8Array(v) {
-			b64str := b64.StdEncoding.EncodeToString(v.([]uint8))
+		if isBytes(v) {
+			b64str := b64.StdEncoding.EncodeToString(v.([]byte))
+
+			b64str = "b64str"
 
 			return b64str, nil
 		}

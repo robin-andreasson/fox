@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-/*
- */
 func Url(path string, h_path string, h_path_rex string, h_params [][]string) (bool, map[string]string, map[string]string) {
 
 	path, query_string, found := strings.Cut(path, "?")

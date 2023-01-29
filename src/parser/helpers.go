@@ -34,6 +34,23 @@ func FirstInstance(data []byte, target string) ([]byte, []byte, bool) {
 	return data[0 : index-targetlength], data[index:], true
 }
 
+func ExtensionMime(path string) (string, bool) {
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == '.' {
+
+			mime := extMimes[path[i+1:]]
+
+			if mime == "" {
+				return "", false
+			}
+
+			return mime, true
+		}
+	}
+
+	return "", false
+}
+
 func urldecode(s string) string {
 
 	ns := ""
@@ -121,7 +138,7 @@ func IsArray(v any) bool {
 	return true
 }
 
-func isUint8Array(v any) bool {
+func isBytes(v any) bool {
 	if v == nil {
 		return false
 	}

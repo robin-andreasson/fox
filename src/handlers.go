@@ -16,36 +16,38 @@ type handler struct {
 	params [][]string
 }
 
-func (r *router) Get(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "GET", stack)
+func (r *router) Get(path string, stack ...func(c *Context)) *router {
+	return r.addHandler(path, "GET", stack)
 }
 
-func (r *router) Post(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "POST", stack)
+func (r *router) Post(path string, stack ...func(c *Context)) *router {
+	return r.addHandler(path, "POST", stack)
 }
 
-func (r *router) Put(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "PUT", stack)
+func (r *router) Put(path string, stack ...func(c *Context)) *router {
+	return r.addHandler(path, "PUT", stack)
 }
 
-func (r *router) Delete(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "DELETE", stack)
+func (r *router) Delete(path string, stack ...func(c *Context)) *router {
+	return r.addHandler(path, "DELETE", stack)
 }
 
-func (r *router) Head(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "HEAD", stack)
+func (r *router) Head(path string, stack ...func(c *Context)) *router {
+	return r.addHandler(path, "HEAD", stack)
 }
 
-func (r *router) Patch(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "PATCH", stack)
+func (r *router) Patch(path string, stack ...func(c *Context)) *router {
+	return r.addHandler(path, "PATCH", stack)
 }
 
-func (r *router) addHandler(path string, method string, stack []func(c *Context)) {
+func (r *router) addHandler(path string, method string, stack []func(c *Context)) *router {
 
 	rex := regexp.MustCompile("^:([^;]+);(.+?)$|^:([^;]+)$")
 
 	var paramArr [][]string
 	params := map[string]bool{}
+
+	path = r.prefix + path
 
 	path_segs := strings.Split(path, "/")
 
@@ -89,5 +91,7 @@ func (r *router) addHandler(path string, method string, stack []func(c *Context)
 		path_rex = strings.Replace(path_rex, regexp.QuoteMeta(path_seg), "(.+?)", 1)
 	}
 
-	r.handlers = append(r.handlers, handler{path: r.prefix + path, method: method, stack: stack, rex: "^" + path_rex + "$", params: paramArr})
+	*r.handlers = append(*r.handlers, handler{path: path, method: method, stack: stack, rex: "^" + path_rex + "$", params: paramArr})
+
+	return r
 }

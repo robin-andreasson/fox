@@ -17,10 +17,12 @@ import (
 )
 
 type router struct {
-	handlers []handler
+	handlers *[]handler
 	prefix   string
 
-	static map[string]static
+	root bool
+
+	static *map[string]static
 }
 
 type static struct {
@@ -28,12 +30,27 @@ type static struct {
 	rex  string
 }
 
-func NewRouter() *router {
-	return &router{}
+/*
+Initializes root router
+*/
+func Root() *router {
+	return &router{handlers: &[]handler{}, root: true, static: &map[string]static{}}
 }
 
-func (r *router) Group(group string) {
+/*
+Create a group by specifying a path prefix
+*/
+func (r *router) Group(group string) *router {
 
+	if group == "" {
+		log.Panic("unnecessary grouping")
+	}
+
+	if group[0] != '/' {
+		group = "/" + group
+	}
+
+	return &router{handlers: r.handlers, prefix: r.prefix + group, static: r.static}
 }
 
 /*
@@ -88,25 +105,21 @@ func (r *router) Static(name string, relative_path ...string) {
 	var path string
 
 	if len(relative_path) == 0 {
-		path = filepath.Join(call_path, "/"+name)
+		path = filepath.Join(call_path, r.prefix+"/"+name)
 	} else {
-		path = filepath.Join(call_path, relative_path[0])
+		path = filepath.Join(call_path, r.prefix+relative_path[0])
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Panic("Cannot find the specified directory")
-	}
-
-	if r.static == nil {
-		r.static = map[string]static{}
+		log.Panic("cannot find directory")
 	}
 
 	rex := `\/` + name + `\/.+`
 
-	r.static[name] = static{filepath.Dir(path), rex}
+	(*r.static)[name] = static{filepath.Dir(path), rex}
 }
 
-func (r *router) Listen(port int) error {
+func Listen(r *router, port int) error {
 	ln, err := net.Listen("tcp", fmt.Sprint(":", port))
 
 	if err != nil {
@@ -122,7 +135,6 @@ func (r *router) Listen(port int) error {
 
 		go request(conn, *r)
 	}
-
 }
 
 func request(conn net.Conn, r router) {
@@ -169,7 +181,7 @@ func request(conn net.Conn, r router) {
 
 func (r *router) handleRequests(c Context, body []byte) {
 
-	for _, handler := range r.handlers {
+	for _, handler := range *r.handlers {
 
 		if handler.method != c.Method {
 			continue
@@ -235,7 +247,7 @@ func handleBody(body []byte, c *Context) {
 
 func (r *router) handleStatic(c *Context) bool {
 
-	for _, s := range r.static {
+	for _, s := range *r.static {
 
 		rex, err := regexp.Compile(s.rex)
 

@@ -10,9 +10,16 @@ import (
 )
 
 func main() {
-	r := fox.NewRouter()
+
+	r := fox.Root()
 
 	r.Static("public")
+
+	maskedData := 255 & 0xFF
+
+	fmt.Println(maskedData)
+
+	fmt.Println(0x52)
 
 	r.Get("/", home)
 
@@ -24,16 +31,19 @@ func main() {
 
 	r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", book)
 
-	r.Get("/json", json_get)
+	api := r.Group("api")
 
-	r.Post("/json", json)
+	api.Get("/json", json_get)
+	api.Post("/json", json)
 
-	r.Post("/urlencoded", urlencoded)
+	form := r.Group("form")
 
-	r.Post("/image", image)
+	form.Post("/urlencoded", urlencoded)
+	form.Post("/image", image)
 
 	fmt.Println("Starting port at", 3000)
-	r.Listen(3000)
+
+	fox.Listen(r, 3000)
 }
 
 func cookies(c *fox.Context) {
@@ -90,7 +100,7 @@ func json_get(c *fox.Context) {
 
 func image(c *fox.Context) {
 
-	files := fox.Get(c.Body, "Files", "name-file")
+	files := fox.Get(c.Body, "Files", "post-image")
 
 	data := fox.Get(files, "Data").([]byte)
 
@@ -102,7 +112,7 @@ func image(c *fox.Context) {
 		log.Panic(err)
 	}
 
-	c.JSON(fox.Status.Ok, c.Body)
+	c.File(fox.Status.Ok, "./"+filename)
 }
 
 func home(c *fox.Context) {

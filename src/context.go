@@ -37,7 +37,7 @@ type CookieAttributes struct {
 	Secure    bool
 	Path      string
 	Domain    string
-	SameSite  string //strict, lax or none are the only accepted values
+	SameSite  string //strict, lax or none
 	ExpiresIn int
 }
 
@@ -46,6 +46,11 @@ func (c *Context) Next() {
 }
 
 func (c *Context) SetHeader(key string, value string) {
+
+	if strings.ToLower(key) == "set-cookie" {
+
+	}
+
 	c.setHeaders[key] = append(c.setHeaders[key], value)
 }
 
@@ -60,6 +65,9 @@ func (c *Context) Head(code int) {
 }
 
 func (c *Context) Text(code int, body string) {
+
+	c.SetHeader("Content-Type", "text/plain")
+
 	if err := c.response(code, []byte(body)); err != nil {
 		log.Panic(err)
 	}
@@ -67,13 +75,24 @@ func (c *Context) Text(code int, body string) {
 
 func (c *Context) File(code int, path string) {
 
-	buffer, err := os.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 
 	if err != nil {
 		log.Panic(err)
 	}
 
-	if err = c.response(code, buffer); err != nil {
+	if mime, found := parser.ExtensionMime(path); found {
+		fmt.Println(mime)
+		c.SetHeader("Content-Type", mime)
+	} else {
+		mime := parser.Mime(bytes)
+
+		fmt.Println(mime)
+
+		c.SetHeader("Content-Type", mime)
+	}
+
+	if err = c.response(code, bytes); err != nil {
 		log.Panic(err)
 	}
 }
@@ -89,6 +108,8 @@ func (c *Context) JSON(status int, body any) {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	c.SetHeader("Content-Type", "application/json")
 
 	if err := c.response(status, []byte(s)); err != nil {
 		log.Panic(err)
