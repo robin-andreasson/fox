@@ -268,15 +268,7 @@ func JSONMarshal(v any) (string, error) {
 
 		for name, value := range v.(map[string]any) {
 
-			var next any
-
-			if IsMap(value) {
-				next = value.(map[string]any)
-			} else {
-				next = value
-			}
-
-			result, err := JSONMarshal(next)
+			result, err := JSONMarshal(value)
 
 			if err != nil {
 				return "", err
@@ -294,8 +286,6 @@ func JSONMarshal(v any) (string, error) {
 	} else {
 		if isBytes(v) {
 			b64str := b64.StdEncoding.EncodeToString(v.([]byte))
-
-			b64str = "b64str"
 
 			return b64str, nil
 		}

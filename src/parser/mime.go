@@ -61,17 +61,21 @@ func Mime(input []byte) string {
 
 	for _, mime_pattern := range mimes {
 
-		match := traversePattern(input, mime_pattern.byte_pattern, mime_pattern.pattern_mask, mime_pattern.ignored)
+		match := pattern_match(input, mime_pattern.byte_pattern, mime_pattern.pattern_mask, mime_pattern.ignored)
 
 		if match {
 			return mime_pattern.mime
 		}
 	}
 
+	if mp4(input) {
+		return "video/mp4"
+	}
+
 	return "text/plain"
 }
 
-func traversePattern(input []byte, pattern []byte, mask []byte, ignored map[byte]bool) bool {
+func pattern_match(input []byte, pattern []byte, mask []byte, ignored map[byte]bool) bool {
 
 	if len(pattern) > len(input) {
 		return false
@@ -96,4 +100,45 @@ func traversePattern(input []byte, pattern []byte, mask []byte, ignored map[byte
 	}
 
 	return true
+}
+
+func mp4(input []byte) bool {
+
+	length := len(input)
+
+	if length < 16 {
+		return false
+	}
+
+	box_size := int(input[3])
+
+	if length < box_size || box_size%4 != 0 {
+		return false
+	}
+
+	predefinedsignature := string(input[4:8])
+
+	if predefinedsignature != "ftyp" {
+		return false
+	}
+
+	signature := string(input[8:11])
+
+	if signature == "mp4" {
+		return true
+	}
+
+	bytes_read := 16
+
+	for bytes_read < box_size {
+		signature = string(input[bytes_read : bytes_read+2])
+
+		if signature == "mp4" {
+			return true
+		}
+
+		bytes_read += 4
+	}
+
+	return false
 }

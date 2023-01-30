@@ -140,19 +140,19 @@ func Listen(r *router, port int) error {
 func request(conn net.Conn, r router) {
 
 	var body []byte
-	var temp_buffer []byte
+	var header_buffer []byte
 	var c Context
 
 	for {
-		buffer := make([]byte, 1024)
+		buffer := make([]byte, 1024*12)
 
 		n, _ := conn.Read(buffer)
 
-		temp_buffer = append(temp_buffer, buffer[0:n]...)
-
 		if len(c.Headers) == 0 {
 
-			headers_bytes, body_bytes, found := parser.FirstInstance(temp_buffer, "\r\n\r\n")
+			header_buffer = append(header_buffer, buffer[0:n]...)
+
+			headers_bytes, body_bytes, found := parser.FirstInstance(header_buffer, "\r\n\r\n")
 
 			if !found {
 				continue
@@ -161,6 +161,8 @@ func request(conn net.Conn, r router) {
 			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
 			c.setHeaders = make(map[string][]string)
 
+			fmt.Println(c.Headers)
+
 			if len(body_bytes) > 0 {
 				body = append(body, body_bytes...)
 			}
@@ -168,6 +170,8 @@ func request(conn net.Conn, r router) {
 		} else {
 			body = append(body, buffer[0:n]...)
 		}
+		fmt.Println(string(body))
+		fmt.Println(len(body))
 
 		if c.Headers["Content-Length"] == fmt.Sprint(len(body)) || c.Method == "GET" {
 
@@ -177,6 +181,14 @@ func request(conn net.Conn, r router) {
 			break
 		}
 	}
+}
+
+func handleChunked(bytes []byte, c Context) []byte {
+	if strings.ToLower(c.Headers["Transfer-Encoding"]) != "chunked" {
+		return bytes
+	}
+
+	return bytes
 }
 
 func (r *router) handleRequests(c Context, body []byte) {

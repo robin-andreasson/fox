@@ -58,10 +58,12 @@ func FormData(body []byte, delimiter []byte) any {
 		filename := names[2]
 
 		file_content := make(map[string]any)
+		file_bytes := value[2 : len(value)-2]
 
 		//Images have two funky \n, one at the beginning and one at the end
-		file_content["Data"] = value[2 : len(value)-2]
-		file_content["FileName"] = filename
+		file_content["Data"] = file_bytes
+		file_content["Size"] = len(file_bytes)
+		file_content["Filename"] = filename
 		file_content["Content-Type"] = ct[1]
 
 		if result["Files"] == nil {

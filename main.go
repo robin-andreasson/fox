@@ -15,12 +15,6 @@ func main() {
 
 	r.Static("public")
 
-	maskedData := 255 & 0xFF
-
-	fmt.Println(maskedData)
-
-	fmt.Println(0x52)
-
 	r.Get("/", home)
 
 	r.Get("/cookies", cookies)
@@ -100,11 +94,13 @@ func json_get(c *fox.Context) {
 
 func image(c *fox.Context) {
 
+	fmt.Println(c.Body)
+
 	files := fox.Get(c.Body, "Files", "post-image")
 
 	data := fox.Get(files, "Data").([]byte)
 
-	filename := fox.Get(files, "FileName").(string)
+	filename := fox.Get(files, "Filename").(string)
 
 	err := os.WriteFile(filename, data, 0777)
 

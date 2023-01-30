@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// Splits array at a specific target
+// Splits the first instance
 func FirstInstance(data []byte, target string) ([]byte, []byte, bool) {
 
 	index := -1

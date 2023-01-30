@@ -1,6 +1,7 @@
 package parser
 
 import (
+	b64 "encoding/base64"
 	"strings"
 )
 
@@ -19,6 +20,10 @@ func Cookies(s string) map[string]string {
 
 		if !found {
 			continue
+		}
+
+		if v, err := b64.StdEncoding.DecodeString(value); err == nil {
+			value = string(v)
 		}
 
 		cookies[name] = value
