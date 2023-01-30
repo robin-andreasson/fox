@@ -164,15 +164,14 @@ func request(conn net.Conn, r router) {
 			fmt.Println(c.Headers)
 
 			if len(body_bytes) > 0 {
-				body = append(body, body_bytes...)
+				body = append(body, parser.ChunkedEncoding(body_bytes, c.Headers["Transfer-Encoding"])...)
 			}
 
 		} else {
-			body = append(body, buffer[0:n]...)
+			body = append(body, parser.ChunkedEncoding(buffer[0:n], c.Headers["Transfer-Encoding"])...)
 		}
-		fmt.Println(string(body))
-		fmt.Println(len(body))
 
+		fmt.Println(len(body))
 		if c.Headers["Content-Length"] == fmt.Sprint(len(body)) || c.Method == "GET" {
 
 			c._conn = conn

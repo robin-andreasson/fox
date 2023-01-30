@@ -1,8 +1,10 @@
 package parser
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // Splits the first instance
@@ -32,6 +34,29 @@ func FirstInstance(data []byte, target string) ([]byte, []byte, bool) {
 	}
 
 	return data[0 : index-targetlength], data[index:], true
+}
+
+func ChunkedEncoding(bytes []byte, content_type string) []byte {
+	if strings.ToLower(content_type) != "chunked" {
+		return bytes
+	}
+
+	bytes_to_send_b, body, _ := FirstInstance(bytes, "\r\n")
+
+	fmt.Println("BYTES: ", bytes_to_send_b)
+
+	var bytes_to_send int
+
+	if result, err := strconv.Atoi(string(bytes_to_send_b)); err == nil {
+		bytes_to_send = result
+	} else {
+		result, _ := strconv.ParseInt(string(bytes_to_send_b), 16, 64)
+
+		bytes_to_send = int(result)
+	}
+
+	fmt.Println("BYTES TO SEND: ", bytes_to_send)
+	return body[0:bytes_to_send]
 }
 
 func ExtensionMime(path string) (string, bool) {
