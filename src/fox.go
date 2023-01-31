@@ -259,6 +259,55 @@ func handleBody(body []byte, c *Context) {
 	}
 }
 
+func handleCors(c *Context) bool {
+
+	origin_h := c.Headers["Origin"]
+
+	if origin_h == "" {
+		return true
+	}
+
+	//if origins is not set, send forbidden
+	if corsoptions.Origins == nil {
+		c.Status(Status.Forbidden)
+
+		return false
+	}
+	//if methods is not set, send method not allowed
+	if corsoptions.Methods == nil {
+		c.Status(Status.MethodNotAllowed)
+
+		return false
+	}
+
+	origin, isAllowedOrigin := corsOrigin(origin_h, corsoptions.Origins)
+
+	if !isAllowedOrigin {
+		return false
+	}
+
+	methods, isAllowedMethod := corsMethod(c.Method, corsoptions._formattedMethods, corsoptions.Methods)
+
+	c.SetHeader("Access-Control-Allow-Origin", origin)
+	c.SetHeader("Access-Control-Allow-Methods", methods)
+
+	if corsoptions.Headers != nil {
+		c.SetHeader("Access-Control-Allow-Headers", corsoptions._formattedHeaders)
+	}
+
+	if corsoptions.Credentials {
+		c.SetHeader("Access-Control-Allow-Credentials", "true")
+	}
+
+	if !isAllowedMethod {
+		c.Status(Status.MethodNotAllowed)
+
+		return false
+	}
+
+	return true
+}
+
 func (r *router) handleStatic(c *Context) bool {
 
 	for _, s := range *r.static {

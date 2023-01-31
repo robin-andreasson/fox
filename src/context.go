@@ -45,12 +45,15 @@ func (c *Context) Next() {
 	c._next = true
 }
 
-func (c *Context) SetHeader(key string, value string) {
+/*
+Set a header by passing a name and value
+*/
+func (c *Context) SetHeader(name string, value string) {
 
-	if strings.ToLower(key) == "set-cookie" {
-		c.setHeaders[key] = append(c.setHeaders[key], value)
+	if strings.ToLower(name) == "set-cookie" {
+		c.setHeaders[name] = append(c.setHeaders[name], value)
 	} else {
-		c.setHeaders[key] = []string{value}
+		c.setHeaders[name] = []string{value}
 	}
 }
 

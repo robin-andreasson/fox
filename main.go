@@ -13,6 +13,8 @@ func main() {
 
 	r := fox.Root()
 
+	fox.CORS(fox.CorsOptions{})
+
 	r.Static("public")
 
 	r.Get("/", home)
