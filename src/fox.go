@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/robin-andreasson/fox/parser"
@@ -56,9 +57,7 @@ func (r *router) Group(group string) *router {
 /*
 Get the value from nested map interfaces
 
-type assertion shorthand
-
-error occurs if the next nested target is nil or not a map
+error occurs if the target is nil or not a map
 */
 func Get(target any, keys ...string) any {
 
@@ -68,14 +67,11 @@ func Get(target any, keys ...string) any {
 
 	key := keys[0]
 	keys = keys[1:]
+
 	t := reflect.TypeOf(target)
 
-	if target == nil {
-		log.Panic(errors.New("Can't nest key \"" + key + "\" because key was nil inside the target map"))
-	}
-
-	if t.Kind() != reflect.Map {
-		log.Panic(errors.New(fmt.Sprint("target is not type of map but is ", reflect.TypeOf(target).Kind())))
+	if target == nil || t.Kind() != reflect.Map {
+		log.Panic(errors.New("Can't nest target at key '" + key + "' because target is not nestable"))
 	}
 
 	next := target.(map[string]any)
@@ -143,10 +139,16 @@ func request(conn net.Conn, r router) {
 	var header_buffer []byte
 	var c Context
 
+	var content_length int
+
 	for {
-		buffer := make([]byte, 1024*12)
+		buffer := make([]byte, 65535)
 
 		n, _ := conn.Read(buffer)
+
+		if n == 0 {
+			break
+		}
 
 		if len(c.Headers) == 0 {
 
@@ -160,34 +162,35 @@ func request(conn net.Conn, r router) {
 
 			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
 			c.setHeaders = make(map[string][]string)
+			c._conn = conn
 
-			fmt.Println(c.Headers)
+			if c.Headers["Content-Length"] != "" {
+
+				if cl, err := strconv.Atoi(c.Headers["Content-Length"]); err == nil {
+					content_length = cl
+				} else {
+					c.Text(Status.BadRequest, "malformed content length")
+					break
+				}
+
+			}
 
 			if len(body_bytes) > 0 {
-				body = append(body, parser.ChunkedEncoding(body_bytes, c.Headers["Transfer-Encoding"])...)
+				body = append(body, body_bytes...)
 			}
 
 		} else {
-			body = append(body, parser.ChunkedEncoding(buffer[0:n], c.Headers["Transfer-Encoding"])...)
+			body = append(body, buffer[0:n]...)
 		}
 
-		fmt.Println(len(body))
-		if c.Headers["Content-Length"] == fmt.Sprint(len(body)) || c.Method == "GET" {
-
-			c._conn = conn
+		if content_length == len(body) || c.Method == "GET" {
 			r.handleRequests(c, body)
-
+			break
+		} else if content_length < len(body) {
+			c.Text(Status.BadRequest, "malformed request syntax or not supported request technique/mechanism")
 			break
 		}
 	}
-}
-
-func handleChunked(bytes []byte, c Context) []byte {
-	if strings.ToLower(c.Headers["Transfer-Encoding"]) != "chunked" {
-		return bytes
-	}
-
-	return bytes
 }
 
 func (r *router) handleRequests(c Context, body []byte) {

@@ -9,13 +9,13 @@ type mime_patterns struct {
 
 var extMimes = map[string]string{
 	"html": "text/html; charset=utf-8",
-	"htm":  "text/html; charset=utf-8",
 	"css":  "text/css",
 	"js":   "text/javascript",
 	"php":  "application/x-httpd-php",
 	"xml":  "application/xml",
 }
 
+// Normally there would be an "ignored" field
 var mimes = []mime_patterns{
 	//IMAGE
 	{mime: "image/x-icon", byte_pattern: []byte{0x00, 0x00, 0x00, 0x01, 0x00}, pattern_mask: []byte{0xFF, 0xFF, 0xFF, 0xFF}, ignored: map[byte]bool{}},
@@ -57,7 +57,11 @@ var mimes = []mime_patterns{
 	//PDF
 }
 
-func Mime(input []byte) string {
+func Mime(path string, input []byte) string {
+
+	if mime, found := ExtensionMime(path); found {
+		return mime
+	}
 
 	for _, mime_pattern := range mimes {
 
@@ -68,7 +72,7 @@ func Mime(input []byte) string {
 		}
 	}
 
-	if mp4(input) {
+	if isMP4(input) {
 		return "video/mp4"
 	}
 
@@ -102,7 +106,7 @@ func pattern_match(input []byte, pattern []byte, mask []byte, ignored map[byte]b
 	return true
 }
 
-func mp4(input []byte) bool {
+func isMP4(input []byte) bool {
 
 	length := len(input)
 

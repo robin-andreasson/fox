@@ -48,10 +48,10 @@ func (c *Context) Next() {
 func (c *Context) SetHeader(key string, value string) {
 
 	if strings.ToLower(key) == "set-cookie" {
-
+		c.setHeaders[key] = append(c.setHeaders[key], value)
+	} else {
+		c.setHeaders[key] = []string{value}
 	}
-
-	c.setHeaders[key] = append(c.setHeaders[key], value)
 }
 
 func (c *Context) Head(code int) {
@@ -64,15 +64,27 @@ func (c *Context) Head(code int) {
 	}
 }
 
+/*
+Send text back to the request endpoint
+
+content type is set to text/html; charset=utf-8
+*/
 func (c *Context) Text(code int, body string) {
 
-	c.SetHeader("Content-Type", "text/plain")
+	c.SetHeader("Content-Type", "text/html; charset=utf-8")
 
 	if err := c.response(code, []byte(body)); err != nil {
 		log.Panic(err)
 	}
 }
 
+/*
+Send back file data to the request endpoint
+
+basic mime types like images, zips, fonts and pdf files are calculated.
+
+mime types from script files that needs a sniffing technique is found through extension
+*/
 func (c *Context) File(code int, path string) {
 
 	bytes, err := os.ReadFile(path)
@@ -81,16 +93,9 @@ func (c *Context) File(code int, path string) {
 		log.Panic(err)
 	}
 
-	if mime, found := parser.ExtensionMime(path); found {
-		fmt.Println(mime)
-		c.SetHeader("Content-Type", mime)
-	} else {
-		mime := parser.Mime(bytes)
+	mime := parser.Mime(path, bytes)
 
-		fmt.Println(mime)
-
-		c.SetHeader("Content-Type", mime)
-	}
+	c.SetHeader("Content-Type", mime)
 
 	if err = c.response(code, bytes); err != nil {
 		log.Panic(err)

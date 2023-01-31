@@ -94,9 +94,9 @@ func json_get(c *fox.Context) {
 
 func image(c *fox.Context) {
 
-	fmt.Println(c.Body)
+	//fmt.Println(c.Body)
 
-	files := fox.Get(c.Body, "Files", "post-image")
+	files := fox.Get(c.Body, "Files", "image")
 
 	data := fox.Get(files, "Data").([]byte)
 
@@ -108,7 +108,7 @@ func image(c *fox.Context) {
 		log.Panic(err)
 	}
 
-	c.File(fox.Status.Ok, "./"+filename)
+	c.File(fox.Status.Ok, filename)
 }
 
 func home(c *fox.Context) {

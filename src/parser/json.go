@@ -296,22 +296,16 @@ func JSONMarshal(v any) (string, error) {
 
 		for _, value := range v.([]any) {
 
+			var err error
+
 			if IsMap(value) {
-				result, err := JSONMarshal(value)
-
-				if err != nil {
-					return "", err
-				}
-
-				value = result
+				value, err = JSONMarshal(value)
 			} else {
-				result, err := convertGoValues(value)
+				value, err = convertGoValues(value)
+			}
 
-				if err != nil {
-					return "", err
-				}
-
-				value = result
+			if err != nil {
+				return "", err
 			}
 
 			s += comma + value.(string)
