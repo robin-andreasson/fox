@@ -195,6 +195,11 @@ func request(conn net.Conn, r router) {
 
 func (r *router) handleRequests(c Context, body []byte) {
 
+	fmt.Println("WOWOWOWOW")
+	if !handleCors(&c) {
+		return
+	}
+
 	for _, handler := range *r.handlers {
 
 		if handler.method != c.Method {
@@ -232,9 +237,7 @@ func (r *router) handleRequests(c Context, body []byte) {
 	}
 
 	//Checks if the url path is related to any of the static handlers
-	if r.handleStatic(&c) {
-		return
-	}
+	r.handleStatic(&c)
 }
 
 func handleBody(body []byte, c *Context) {
@@ -256,6 +259,8 @@ func handleBody(body []byte, c *Context) {
 		delimiter := strings.Split(segments[1], "boundary=")[1]
 
 		c.Body = parser.FormData(body, []byte("--"+delimiter)).(map[string]any)
+	default:
+		c.Body = make(map[string]any)
 	}
 }
 
@@ -263,6 +268,7 @@ func handleCors(c *Context) bool {
 
 	origin_h := c.Headers["Origin"]
 
+	//if origin does not exist, return true since the request endpoint isn't from another origin
 	if origin_h == "" {
 		return true
 	}
@@ -283,20 +289,26 @@ func handleCors(c *Context) bool {
 	origin, isAllowedOrigin := corsOrigin(origin_h, corsoptions.Origins)
 
 	if !isAllowedOrigin {
+		c.SetHeader("Access-Control-Allow-Origin", "null")
+
+		c.Status(Status.Forbidden)
+
 		return false
 	}
 
 	methods, isAllowedMethod := corsMethod(c.Method, corsoptions._formattedMethods, corsoptions.Methods)
 
+	if corsoptions.Credentials {
+		c.SetHeader("Access-Control-Allow-Credentials", "true")
+	}
+
 	c.SetHeader("Access-Control-Allow-Origin", origin)
 	c.SetHeader("Access-Control-Allow-Methods", methods)
 
+	//isAllowedHeaders := corsHeaders(c.Headers["Access-Control-Request-Headers"], corsoptions._mappedHeaders)
+
 	if corsoptions.Headers != nil {
 		c.SetHeader("Access-Control-Allow-Headers", corsoptions._formattedHeaders)
-	}
-
-	if corsoptions.Credentials {
-		c.SetHeader("Access-Control-Allow-Credentials", "true")
 	}
 
 	if !isAllowedMethod {
@@ -304,6 +316,12 @@ func handleCors(c *Context) bool {
 
 		return false
 	}
+
+	//if !isAllowedHeaders {
+	//	c.Status(Status.Forbidden)
+	//
+	//	return false
+	//}
 
 	return true
 }

@@ -1,5 +1,6 @@
 package main
 
+//crypto.randomBytes(32).toString('hex')
 import (
 	jseon "encoding/json"
 	"fmt"
@@ -13,7 +14,12 @@ func main() {
 
 	r := fox.Root()
 
-	fox.CORS(fox.CorsOptions{})
+	fox.CORS(fox.CorsOptions{
+		Origins: []string{"http://localhost:5500", "http://127.0.0.1:5500", "https://github.com/robin-andreasson/fox"},
+		Methods: []string{"GET", "POST", "DELETE", "PUT"},
+		//Headers:     []string{"content-type"},
+		Credentials: true,
+	})
 
 	r.Static("public")
 
@@ -58,7 +64,6 @@ func auth(c *fox.Context) {
 
 func json(c *fox.Context) {
 
-	//fmt.Println(c.Body)
 	//
 	//firstname := fox.Get(c.Body, "person", "firstname")
 	//lastname := fox.Get(c.Body, "person", "lastname")
