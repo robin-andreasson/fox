@@ -51,15 +51,21 @@ Set a header by passing a name and value
 func (c *Context) SetHeader(name string, value string) {
 
 	if strings.ToLower(name) == "set-cookie" {
+
+		if len([]byte(value)) > 4093 {
+			log.Panic("Set-Cookie value exceeded the size limit of 4093")
+		}
+
 		c.setHeaders[name] = append(c.setHeaders[name], value)
 	} else {
+
 		c.setHeaders[name] = []string{value}
 	}
 }
 
 func (c *Context) Head(code int) {
 	if c.Method != "HEAD" {
-		log.Panic("head http response function should only be called during a response when the request method is 'HEAD'")
+		log.Panic("'Head' function should only be called during http requests where the method is HEAD")
 	}
 
 	if err := c.response(code, []byte{}); err != nil {
@@ -84,9 +90,9 @@ func (c *Context) Text(code int, body string) {
 /*
 Send back file data to the request endpoint
 
-basic mime types like images, zips, fonts and pdf files are calculated.
+basic mime types like images, zips, fonts, pdf and mp4 files are calculated.
 
-mime types from script files that needs a sniffing technique is found through extension
+mime types from script files that is in need for a sniffing technique is found through file extension
 */
 func (c *Context) File(code int, path string) {
 
@@ -105,6 +111,9 @@ func (c *Context) File(code int, path string) {
 	}
 }
 
+/*
+Send application/json response to the request endpoint
+*/
 func (c *Context) JSON(status int, body any) {
 
 	if !parser.IsMap(body) && !parser.IsArray(body) {

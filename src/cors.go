@@ -1,7 +1,6 @@
 package fox
 
 import (
-	"regexp"
 	"strings"
 )
 
@@ -16,6 +15,7 @@ type CorsOptions struct {
 	_mappedHeaders    map[string]bool
 }
 
+// Currently not used
 var cors_safelist_rh = map[string]string{
 	"accept-language":  "[0-9a-zA-Z]+",
 	"content-language": "[0-9a-zA-Z]+",
@@ -70,34 +70,15 @@ func corsMethod(method string, formattedMethods string, allowedMethods []string)
 
 func corsHeaders(acrh string, allowedHeaders map[string]bool) bool {
 
-	//if wildcard, return true
-	if allowedHeaders["*"] {
+	//if wildcard exists or no "Access-Control-Request-Headers" header, return true
+	if allowedHeaders["*"] || acrh == "" {
 		return true
 	}
 
 	acrh_a := strings.Split(acrh, ", ")
 
 	for _, name := range acrh_a {
-		//if header value length is above 128, return false
-		if len(value) > 128 {
-			return false
-		}
-
-		rex_string := cors_safelist_rh[name]
-
-		//if header isn't inside safelist, check if header is inside set access-control-allow-headers
-		if rex_string == "" {
-			if !allowedHeaders[name] {
-				return false
-			}
-
-			continue
-		}
-
-		//if header is inside safelist, check value validity
-		rex := regexp.MustCompile(rex_string)
-
-		if rex.FindString(value) == "" {
+		if !allowedHeaders[name] {
 			return false
 		}
 	}
