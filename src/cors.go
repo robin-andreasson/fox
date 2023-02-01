@@ -68,13 +68,16 @@ func corsMethod(method string, formattedMethods string, allowedMethods []string)
 	return "", false
 }
 
-func corsHeaders(acrh map[string]string, allowedHeaders map[string]bool) bool {
+func corsHeaders(acrh string, allowedHeaders map[string]bool) bool {
+
 	//if wildcard, return true
 	if allowedHeaders["*"] {
 		return true
 	}
 
-	for name, value := range headers {
+	acrh_a := strings.Split(acrh, ", ")
+
+	for _, name := range acrh_a {
 		//if header value length is above 128, return false
 		if len(value) > 128 {
 			return false
