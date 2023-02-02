@@ -164,9 +164,9 @@ func request(conn net.Conn, r router) {
 			c.setHeaders = make(map[string][]string)
 			c._conn = conn
 
-			if c.Headers["Content-Length"] != "" {
+			if c.Headers["content-length"] != "" {
 
-				if cl, err := strconv.Atoi(c.Headers["Content-Length"]); err == nil {
+				if cl, err := strconv.Atoi(c.Headers["content-length"]); err == nil {
 					content_length = cl
 				} else {
 					c.Text(Status.BadRequest, "malformed content length")
@@ -195,10 +195,11 @@ func request(conn net.Conn, r router) {
 
 func (r *router) handleRequests(c Context, body []byte) {
 
-	fmt.Println("WOWOWOWOW")
 	if !handleCors(&c) {
 		return
 	}
+
+	fmt.Println(string(body))
 
 	for _, handler := range *r.handlers {
 
@@ -215,7 +216,7 @@ func (r *router) handleRequests(c Context, body []byte) {
 		c.Raw = body
 		c.Params = params
 		c.Query = queries
-		c.Cookies = parser.Cookies(c.Headers["Cookie"])
+		c.Cookies = parser.Cookies(c.Headers["cookie"])
 
 		handleBody(body, &c)
 
@@ -241,11 +242,11 @@ func (r *router) handleRequests(c Context, body []byte) {
 }
 
 func handleBody(body []byte, c *Context) {
-	if c.Headers["Content-Type"] == "" {
+	if c.Headers["content-type"] == "" {
 		return
 	}
 
-	segments := strings.Split(c.Headers["Content-Type"], "; ")
+	segments := strings.Split(c.Headers["content-type"], "; ")
 
 	switch segments[0] {
 	case "application/json":
@@ -266,50 +267,23 @@ func handleBody(body []byte, c *Context) {
 
 func handleCors(c *Context) bool {
 
-	origin_h := c.Headers["Origin"]
+	origin_h := c.Headers["origin"]
 
-	//if origin does not exist, return true since the request endpoint isn't from another origin
 	if origin_h == "" {
 		return true
 	}
 
-	//if origins is not set, send forbidden
-	if corsoptions.Origins == nil {
-		c.Status(Status.Forbidden)
-
-		return false
-	}
-	//if methods is not set, send method not allowed
-	if corsoptions.Methods == nil {
-		c.Status(Status.MethodNotAllowed)
-
-		return false
-	}
-
-	origin, isAllowedOrigin := corsOrigin(origin_h, corsoptions.Origins)
+	origin, isAllowedOrigin := corsOrigin(origin_h, c, corsoptions.Origins)
 
 	if !isAllowedOrigin {
-		c.SetHeader("Access-Control-Allow-Origin", "null")
+		c.SetHeader("access-control-allow-origin", "null")
 
 		c.Status(Status.Forbidden)
 
 		return false
 	}
 
-	methods, isAllowedMethod := corsMethod(c.Method, corsoptions._formattedMethods, corsoptions.Methods)
-
-	if corsoptions.Credentials {
-		c.SetHeader("Access-Control-Allow-Credentials", "true")
-	}
-
-	c.SetHeader("Access-Control-Allow-Origin", origin)
-	c.SetHeader("Access-Control-Allow-Methods", methods)
-
-	//isAllowedHeaders := corsHeaders(c.Headers["Access-Control-Request-Headers"], corsoptions._mappedHeaders)
-
-	if corsoptions.Headers != nil {
-		c.SetHeader("Access-Control-Allow-Headers", corsoptions._formattedHeaders)
-	}
+	methods, isAllowedMethod := corsMethod(c.Headers["access-control-request-method"], c, corsoptions._formattedMethods, corsoptions.Methods)
 
 	if !isAllowedMethod {
 		c.Status(Status.MethodNotAllowed)
@@ -317,11 +291,25 @@ func handleCors(c *Context) bool {
 		return false
 	}
 
-	//if !isAllowedHeaders {
-	//	c.Status(Status.Forbidden)
-	//
-	//	return false
-	//}
+	if corsoptions.Credentials {
+		c.SetHeader("access-control-allow-credentials", "true")
+	}
+
+	c.SetHeader("access-control-allow-origin", origin)
+
+	if methods != "" {
+		c.SetHeader("access-control-allow-methods", methods)
+	}
+
+	allowedheaders, isAllowedHeaders := corsHeaders(c.Headers["access-control-request-headers"], corsoptions._formattedHeaders, corsoptions._mappedHeaders)
+
+	if !isAllowedHeaders {
+		c.Status(Status.Forbidden)
+
+		return false
+	}
+
+	c.SetHeader("access-control-allow-headers", allowedheaders)
 
 	return true
 }

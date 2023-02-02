@@ -139,6 +139,13 @@ func (c *Context) Status(status int) {
 	}
 }
 
+func (c *Context) Redirect(path string) {
+
+	c.SetHeader("Location", path)
+
+	c.Status(Status.SeeOther)
+}
+
 /*
 Set a cookie
 */

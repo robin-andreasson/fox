@@ -15,9 +15,9 @@ func main() {
 	r := fox.Root()
 
 	fox.CORS(fox.CorsOptions{
-		Origins: []string{"http://localhost:5500", "http://127.0.0.1:5500", "https://github.com/robin-andreasson/fox"},
-		Methods: []string{"GET", "POST", "DELETE", "PUT"},
-		//Headers:     []string{"content-type"},
+		Origins:     []string{"http://localhost:5500", "http://127.0.0.1:5500", "https://github.com/robin-andreasson/fox"},
+		Methods:     []string{"GET", "POST", "DELETE", "PUT"},
+		Headers:     []string{"content-type"},
 		Credentials: true,
 	})
 
@@ -34,6 +34,10 @@ func main() {
 	r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", book)
 
 	api := r.Group("api")
+
+	api.Options("/json", func(c *fox.Context) {
+		c.Status(200)
+	})
 
 	api.Get("/json", json_get)
 	api.Post("/json", json)
@@ -63,16 +67,6 @@ func auth(c *fox.Context) {
 }
 
 func json(c *fox.Context) {
-
-	//
-	//firstname := fox.Get(c.Body, "person", "firstname")
-	//lastname := fox.Get(c.Body, "person", "lastname")
-	//
-	//arr := fox.Get(c.Body, "test", "arr")
-	//
-	//fmt.Println(firstname)
-	//fmt.Println(lastname)
-	//fmt.Println(arr)
 
 	c.JSON(fox.Status.Ok, c.Body)
 }

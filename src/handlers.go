@@ -40,6 +40,10 @@ func (r *router) Patch(path string, stack ...func(c *Context)) *router {
 	return r.addHandler(path, "PATCH", stack)
 }
 
+func (r *router) Options(path string, stack ...func(c *Context)) *router {
+	return r.addHandler(path, "OPTIONS", stack)
+}
+
 func (r *router) addHandler(path string, method string, stack []func(c *Context)) *router {
 
 	rex := regexp.MustCompile("^:([^;]+);(.+?)$|^:([^;]+)$")

@@ -43,7 +43,13 @@ func CORS(options CorsOptions) {
 	}
 }
 
-func corsOrigin(origin string, allowedOrigins []string) (string, bool) {
+func corsOrigin(origin string, c *Context, allowedOrigins []string) (string, bool) {
+	//if origins is not set, send forbidden
+	if corsoptions.Origins == nil {
+		c.Status(Status.Forbidden)
+
+		return "", false
+	}
 
 	for _, org := range allowedOrigins {
 		if origin == org || org == "*" {
@@ -54,7 +60,18 @@ func corsOrigin(origin string, allowedOrigins []string) (string, bool) {
 	return "", false
 }
 
-func corsMethod(method string, formattedMethods string, allowedMethods []string) (string, bool) {
+func corsMethod(method string, c *Context, formattedMethods string, allowedMethods []string) (string, bool) {
+
+	if method == "" {
+		return "", true
+	}
+
+	//if methods is not set, send method not allowed
+	if corsoptions.Methods == nil {
+		c.Status(Status.MethodNotAllowed)
+
+		return "", false
+	}
 
 	for _, mth := range allowedMethods {
 		if method == strings.ToUpper(mth) {
@@ -68,20 +85,28 @@ func corsMethod(method string, formattedMethods string, allowedMethods []string)
 	return "", false
 }
 
-func corsHeaders(acrh string, allowedHeaders map[string]bool) bool {
+func corsHeaders(acrh string, formattedHeaders string, allowedHeaders map[string]bool) (string, bool) {
+
+	if acrh == "" {
+		return "", true
+	}
+
+	if len(allowedHeaders) == 0 {
+		return "", false
+	}
 
 	//if wildcard exists or no "Access-Control-Request-Headers" header, return true
-	if allowedHeaders["*"] || acrh == "" {
-		return true
+	if allowedHeaders["*"] {
+		return "*", true
 	}
 
 	acrh_a := strings.Split(acrh, ", ")
 
 	for _, name := range acrh_a {
 		if !allowedHeaders[name] {
-			return false
+			return "", false
 		}
 	}
 
-	return true
+	return formattedHeaders, true
 }
