@@ -2,7 +2,6 @@ package main
 
 //crypto.randomBytes(32).toString('hex')
 import (
-	jseon "encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -12,11 +11,15 @@ import (
 
 func main() {
 
-	r := fox.Root()
+	r := fox.Init()
+
+	var v any = make(map[string]string)
+
+	fmt.Println(v.(map[string]any))
 
 	fox.CORS(fox.CorsOptions{
-		Origins:     []string{"http://localhost:5500", "http://127.0.0.1:5500", "https://github.com/robin-andreasson/fox"},
-		Methods:     []string{"GET", "POST", "DELETE", "PUT"},
+		Origins:     []string{"http://127.0.0.1:5500", "*"},
+		Methods:     []string{"POST", "*"},
 		Headers:     []string{"content-type"},
 		Credentials: true,
 	})
@@ -68,6 +71,14 @@ func auth(c *fox.Context) {
 
 func json(c *fox.Context) {
 
+	c.Cookie("token", "DAMN", fox.CookieAttributes{
+		BASE64:   true,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: "None",
+		MaxAge:   1000 * 60 * 60 * 24,
+	})
+
 	c.JSON(fox.Status.Ok, c.Body)
 }
 
@@ -85,12 +96,7 @@ func urlencoded(c *fox.Context) {
 }
 
 func json_get(c *fox.Context) {
-	bytes, _ := os.ReadFile("./data.json")
-
-	mapperd := make(map[string]any)
-	jseon.Unmarshal(bytes, &mapperd)
-
-	c.JSON(fox.Status.Ok, mapperd)
+	c.JSON(fox.Status.Ok, c.Headers)
 }
 
 func image(c *fox.Context) {

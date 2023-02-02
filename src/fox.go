@@ -34,7 +34,7 @@ type static struct {
 /*
 Initializes root router
 */
-func Root() *router {
+func Init() *router {
 	return &router{handlers: &[]handler{}, root: true, static: &map[string]static{}}
 }
 
@@ -276,7 +276,7 @@ func handleCors(c *Context) bool {
 	origin, isAllowedOrigin := corsOrigin(origin_h, c, corsoptions.Origins)
 
 	if !isAllowedOrigin {
-		c.SetHeader("access-control-allow-origin", "null")
+		c.SetHeader("Access-Control-Allow-Origin", "null")
 
 		c.Status(Status.Forbidden)
 
@@ -292,13 +292,13 @@ func handleCors(c *Context) bool {
 	}
 
 	if corsoptions.Credentials {
-		c.SetHeader("access-control-allow-credentials", "true")
+		c.SetHeader("Access-Control-Allow-Credentials", "true")
 	}
 
-	c.SetHeader("access-control-allow-origin", origin)
+	c.SetHeader("Access-Control-Allow-Origin", origin)
 
 	if methods != "" {
-		c.SetHeader("access-control-allow-methods", methods)
+		c.SetHeader("Access-Control-Allow-Methods", methods)
 	}
 
 	allowedheaders, isAllowedHeaders := corsHeaders(c.Headers["access-control-request-headers"], corsoptions._formattedHeaders, corsoptions._mappedHeaders)
@@ -309,7 +309,7 @@ func handleCors(c *Context) bool {
 		return false
 	}
 
-	c.SetHeader("access-control-allow-headers", allowedheaders)
+	c.SetHeader("Access-Control-Allow-Headers", allowedheaders)
 
 	return true
 }

@@ -10,6 +10,9 @@ func formatWithDelimiter(arr []string, delimiter string, ignore string) string {
 	formatted := ""
 
 	for i := 1; i < len(arr); i++ {
+		if arr[i] == ignore {
+			continue
+		}
 
 		formatted += delimiter + arr[i]
 	}

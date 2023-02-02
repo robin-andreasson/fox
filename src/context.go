@@ -32,13 +32,15 @@ type Context struct {
 }
 
 type CookieAttributes struct {
-	HttpOnly  bool
-	BASE64    bool
-	Secure    bool
-	Path      string
-	Domain    string
-	SameSite  string //strict, lax or none
-	ExpiresIn int
+	HttpOnly    bool
+	BASE64      bool
+	Secure      bool
+	Partitioned bool
+	Path        string
+	Domain      string
+	SameSite    string //strict, lax or none
+	ExpiresIn   int
+	MaxAge      int
 }
 
 func (c *Context) Next() {
@@ -159,8 +161,14 @@ func (c *Context) Cookie(name string, value string, attributes CookieAttributes)
 		cookie += value
 	}
 
-	if attributes.ExpiresIn != 0 {
+	if attributes.MaxAge != 0 {
+		cookie += "; Max-Age=" + fmt.Sprint(attributes.MaxAge)
+	} else if attributes.ExpiresIn != 0 {
 		cookie += "; Expires=" + formatTime(time.Duration(attributes.ExpiresIn))
+	}
+
+	if attributes.Partitioned {
+		cookie += "; Partitioned"
 	}
 
 	if attributes.HttpOnly {
