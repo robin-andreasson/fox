@@ -249,6 +249,7 @@ func nest(mode string, token string, name string, body *any) *any {
 }
 
 func JSONMarshal(v any) (string, error) {
+
 	if !IsMap(v) && !IsArray(v) {
 		value, err := convertGoValues(v)
 
@@ -266,7 +267,12 @@ func JSONMarshal(v any) (string, error) {
 
 		comma := ""
 
-		for name, value := range v.(map[string]any) {
+		iter := reflect.ValueOf(v).MapRange()
+
+		for iter.Next() {
+
+			name := iter.Key().String()
+			value := iter.Value().Interface()
 
 			result, err := JSONMarshal(value)
 
@@ -294,7 +300,11 @@ func JSONMarshal(v any) (string, error) {
 
 		comma := ""
 
-		for _, value := range v.([]any) {
+		iter := reflect.ValueOf(v)
+
+		for i := 0; i < iter.Len(); i++ {
+
+			value := iter.Index(i).Interface()
 
 			var err error
 

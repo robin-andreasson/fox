@@ -13,10 +13,6 @@ func main() {
 
 	r := fox.Init()
 
-	var v any = make(map[string]string)
-
-	fmt.Println(v.(map[string]any))
-
 	fox.CORS(fox.CorsOptions{
 		Origins:     []string{"http://127.0.0.1:5500", "*"},
 		Methods:     []string{"POST", "*"},
@@ -38,7 +34,7 @@ func main() {
 
 	api := r.Group("api")
 
-	api.Options("/json", func(c *fox.Context) {
+	api.Preflight("/json", func(c *fox.Context) {
 		c.Status(200)
 	})
 
@@ -71,12 +67,13 @@ func auth(c *fox.Context) {
 
 func json(c *fox.Context) {
 
-	c.Cookie("token", "DAMN", fox.CookieAttributes{
+	c.Cookie("token", "This is an insane token value", fox.CookieAttributes{
 		BASE64:   true,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: "None",
-		MaxAge:   1000 * 60 * 60 * 24,
+		Path:     "/",
+		MaxAge:   60 * 60 * 24,
 	})
 
 	c.JSON(fox.Status.Ok, c.Body)
@@ -86,8 +83,8 @@ func urlencoded(c *fox.Context) {
 
 	fmt.Println(c.Body)
 
-	firstname := fox.Get(c.Body, "firstname")
-	lastname := fox.Get(c.Body, "lastname")
+	firstname := fox.Get[string](c.Body, "firstname")
+	lastname := fox.Get[string](c.Body, "lastname")
 
 	fmt.Println(firstname)
 	fmt.Println(lastname)
@@ -96,6 +93,7 @@ func urlencoded(c *fox.Context) {
 }
 
 func json_get(c *fox.Context) {
+
 	c.JSON(fox.Status.Ok, c.Headers)
 }
 
@@ -103,11 +101,11 @@ func image(c *fox.Context) {
 
 	//fmt.Println(c.Body)
 
-	files := fox.Get(c.Body, "Files", "image")
+	files := fox.Get[map[string]any](c.Body, "Files", "image")
 
-	data := fox.Get(files, "Data").([]byte)
+	data := fox.Get[[]byte](files, "Data")
 
-	filename := fox.Get(files, "Filename").(string)
+	filename := fox.Get[string](files, "Filename")
 
 	err := os.WriteFile(filename, data, 0777)
 

@@ -16,35 +16,41 @@ type handler struct {
 	params [][]string
 }
 
-func (r *router) Get(path string, stack ...func(c *Context)) *router {
-	return r.addHandler(path, "GET", stack)
+func (r *router) Get(path string, stack ...func(c *Context)) {
+	*r.handlers = append(*r.handlers, r.addHandler(path, "GET", stack))
 }
 
-func (r *router) Post(path string, stack ...func(c *Context)) *router {
-	return r.addHandler(path, "POST", stack)
+func (r *router) Post(path string, stack ...func(c *Context)) {
+	*r.handlers = append(*r.handlers, r.addHandler(path, "POST", stack))
 }
 
-func (r *router) Put(path string, stack ...func(c *Context)) *router {
-	return r.addHandler(path, "PUT", stack)
+func (r *router) Put(path string, stack ...func(c *Context)) {
+	*r.handlers = append(*r.handlers, r.addHandler(path, "PUT", stack))
 }
 
-func (r *router) Delete(path string, stack ...func(c *Context)) *router {
-	return r.addHandler(path, "DELETE", stack)
+func (r *router) Delete(path string, stack ...func(c *Context)) {
+	*r.handlers = append(*r.handlers, r.addHandler(path, "DELETE", stack))
 }
 
-func (r *router) Head(path string, stack ...func(c *Context)) *router {
-	return r.addHandler(path, "HEAD", stack)
+func (r *router) Head(path string, stack ...func(c *Context)) {
+	*r.handlers = append(*r.handlers, r.addHandler(path, "HEAD", stack))
 }
 
-func (r *router) Patch(path string, stack ...func(c *Context)) *router {
-	return r.addHandler(path, "PATCH", stack)
+func (r *router) Patch(path string, stack ...func(c *Context)) {
+	*r.handlers = append(*r.handlers, r.addHandler(path, "PATCH", stack))
 }
 
-func (r *router) Options(path string, stack ...func(c *Context)) *router {
-	return r.addHandler(path, "OPTIONS", stack)
+func (r *router) Options(path string, stack ...func(c *Context)) {
+	*r.handlers = append(*r.handlers, r.addHandler(path, "OPTIONS", stack))
 }
 
-func (r *router) addHandler(path string, method string, stack []func(c *Context)) *router {
+func (r *router) Preflight(path string, handler func(c *Context)) {
+	stack := []func(c *Context){handler}
+
+	*r.preflight = append(*r.preflight, r.addHandler(path, "OPTIONS", stack))
+}
+
+func (r *router) addHandler(path string, method string, stack []func(c *Context)) handler {
 
 	rex := regexp.MustCompile("^:([^;]+);(.+?)$|^:([^;]+)$")
 
@@ -95,7 +101,5 @@ func (r *router) addHandler(path string, method string, stack []func(c *Context)
 		path_rex = strings.Replace(path_rex, regexp.QuoteMeta(path_seg), "(.+?)", 1)
 	}
 
-	*r.handlers = append(*r.handlers, handler{path: path, method: method, stack: stack, rex: "^" + path_rex + "$", params: paramArr})
-
-	return r
+	return handler{path: path, method: method, stack: stack, rex: "^" + path_rex + "$", params: paramArr}
 }

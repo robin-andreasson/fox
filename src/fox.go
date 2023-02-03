@@ -21,6 +21,8 @@ type router struct {
 	handlers *[]handler
 	prefix   string
 
+	preflight *[]handler
+
 	root bool
 
 	static *map[string]static
@@ -59,10 +61,10 @@ Get the value from nested map interfaces
 
 error occurs if the target is nil or not a map
 */
-func Get(target any, keys ...string) any {
+func Get[T any](target any, keys ...string) T {
 
 	if len(keys) == 0 {
-		return target
+		return target.(T)
 	}
 
 	key := keys[0]
@@ -76,7 +78,7 @@ func Get(target any, keys ...string) any {
 
 	next := target.(map[string]any)
 
-	return Get(next[key], keys...)
+	return Get[T](next[key], keys...)
 }
 
 /*
@@ -107,7 +109,7 @@ func (r *router) Static(name string, relative_path ...string) {
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Panic("cannot find directory")
+		log.Panic("cannot find target directory " + name)
 	}
 
 	rex := `\/` + name + `\/.+`
@@ -199,46 +201,59 @@ func (r *router) handleRequests(c Context, body []byte) {
 		return
 	}
 
-	fmt.Println(string(body))
+	if c.Method == "OPTIONS" {
+		for _, preflight := range *r.preflight {
+			if found := handleRoutes(c, body, preflight); found {
+				return
+			}
+		}
+	}
 
 	for _, handler := range *r.handlers {
-
-		if handler.method != c.Method {
-			continue
+		if found := handleRoutes(c, body, handler); found {
+			return
 		}
-
-		match, queries, params := parser.Url(c.Url, handler.path, handler.rex, handler.params)
-
-		if !match {
-			continue
-		}
-
-		c.Raw = body
-		c.Params = params
-		c.Query = queries
-		c.Cookies = parser.Cookies(c.Headers["cookie"])
-
-		handleBody(body, &c)
-
-		for _, function := range handler.stack {
-
-			function(&c)
-
-			if !c._next {
-
-				c._conn.Close()
-
-				break
-			}
-
-			c._next = false
-		}
-
-		return
 	}
 
 	//Checks if the url path is related to any of the static handlers
-	r.handleStatic(&c)
+	if !r.handleStatic(&c) {
+		c.Status(400)
+	}
+}
+
+func handleRoutes(c Context, body []byte, handler handler) bool {
+	if handler.method != c.Method {
+		return false
+	}
+
+	match, queries, params := parser.Url(c.Url, handler.path, handler.rex, handler.params)
+
+	if !match {
+		return false
+	}
+
+	c.Raw = body
+	c.Params = params
+	c.Query = queries
+	c.Cookies = parser.Cookies(c.Headers["cookie"])
+
+	handleBody(body, &c)
+
+	for _, function := range handler.stack {
+
+		function(&c)
+
+		if !c._next {
+
+			c._conn.Close()
+
+			break
+		}
+
+		c._next = false
+	}
+
+	return true
 }
 
 func handleBody(body []byte, c *Context) {
