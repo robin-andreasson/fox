@@ -73,7 +73,7 @@ func Get[T any](target any, keys ...string) T {
 	t := reflect.TypeOf(target)
 
 	if target == nil || t.Kind() != reflect.Map {
-		log.Panic(errors.New("Can't nest target at key '" + key + "' because target is not nestable"))
+		log.Panic(errors.New("cannot nest target at key '" + key + "' because target is either not a map or nil"))
 	}
 
 	next := target.(map[string]any)
@@ -197,63 +197,47 @@ func request(conn net.Conn, r router) {
 
 func (r *router) handleRequests(c Context, body []byte) {
 
-	if !handleCors(&c) {
-		return
-	}
-
-	if c.Method == "OPTIONS" {
-		for _, preflight := range *r.preflight {
-			if found := handleRoutes(c, body, preflight); found {
-				return
-			}
-		}
-	}
+	status := handleCors(&c)
 
 	for _, handler := range *r.handlers {
-		if found := handleRoutes(c, body, handler); found {
-			return
+		if handler.method != c.Method {
+			continue
 		}
+
+		match, queries, params := parser.Url(c.Url, handler.path, handler.rex, handler.params)
+
+		if !match {
+			continue
+		}
+
+		c.Raw = body
+		c.Params = params
+		c.Query = queries
+		c.Cookies = parser.Cookies(c.Headers["cookie"])
+
+		handleBody(body, &c)
+
+		for _, function := range handler.stack {
+
+			function(&c)
+
+			if !c._next {
+
+				c._conn.Close()
+
+				break
+			}
+
+			c._next = false
+		}
+
+		return
 	}
 
 	//Checks if the url path is related to any of the static handlers
 	if !r.handleStatic(&c) {
-		c.Status(400)
+		c.Status(status)
 	}
-}
-
-func handleRoutes(c Context, body []byte, handler handler) bool {
-	if handler.method != c.Method {
-		return false
-	}
-
-	match, queries, params := parser.Url(c.Url, handler.path, handler.rex, handler.params)
-
-	if !match {
-		return false
-	}
-
-	c.Raw = body
-	c.Params = params
-	c.Query = queries
-	c.Cookies = parser.Cookies(c.Headers["cookie"])
-
-	handleBody(body, &c)
-
-	for _, function := range handler.stack {
-
-		function(&c)
-
-		if !c._next {
-
-			c._conn.Close()
-
-			break
-		}
-
-		c._next = false
-	}
-
-	return true
 }
 
 func handleBody(body []byte, c *Context) {
@@ -280,12 +264,15 @@ func handleBody(body []byte, c *Context) {
 	}
 }
 
-func handleCors(c *Context) bool {
+/*
+Checks cors and returns the default error status code
+*/
+func handleCors(c *Context) int {
 
 	origin_h := c.Headers["origin"]
 
 	if origin_h == "" {
-		return true
+		return 404
 	}
 
 	origin, isAllowedOrigin := corsOrigin(origin_h, c, corsoptions.Origins)
@@ -293,17 +280,13 @@ func handleCors(c *Context) bool {
 	if !isAllowedOrigin {
 		c.SetHeader("Access-Control-Allow-Origin", "null")
 
-		c.Status(Status.Forbidden)
-
-		return false
+		return Status.Forbidden
 	}
 
 	methods, isAllowedMethod := corsMethod(c.Headers["access-control-request-method"], c, corsoptions._formattedMethods, corsoptions.Methods)
 
 	if !isAllowedMethod {
-		c.Status(Status.MethodNotAllowed)
-
-		return false
+		return Status.MethodNotAllowed
 	}
 
 	if corsoptions.Credentials {
@@ -319,14 +302,12 @@ func handleCors(c *Context) bool {
 	allowedheaders, isAllowedHeaders := corsHeaders(c.Headers["access-control-request-headers"], corsoptions._formattedHeaders, corsoptions._mappedHeaders)
 
 	if !isAllowedHeaders {
-		c.Status(Status.Forbidden)
-
-		return false
+		return Status.Forbidden
 	}
 
 	c.SetHeader("Access-Control-Allow-Headers", allowedheaders)
 
-	return true
+	return 404
 }
 
 func (r *router) handleStatic(c *Context) bool {

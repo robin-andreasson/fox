@@ -48,11 +48,20 @@ func (c *Context) Next() {
 }
 
 /*
+returns set response headers
+*/
+func (c *Context) ResHeaders() map[string][]string {
+	return c.setHeaders
+}
+
+/*
 Set a header by passing a name and value
 */
 func (c *Context) SetHeader(name string, value string) {
 
-	if strings.ToLower(name) == "set-cookie" {
+	name = strings.ToLower(name)
+
+	if name == "set-cookie" {
 
 		if len([]byte(value)) > 4093 {
 			log.Panic("Set-Cookie value exceeded the size limit of 4093")
@@ -60,14 +69,13 @@ func (c *Context) SetHeader(name string, value string) {
 
 		c.setHeaders[name] = append(c.setHeaders[name], value)
 	} else {
-
 		c.setHeaders[name] = []string{value}
 	}
 }
 
 func (c *Context) Head(code int) {
 	if c.Method != "HEAD" {
-		log.Panic("'Head' function should only be called during http requests where the method is HEAD")
+		log.Panic("Head function can only be called when method is HEAD")
 	}
 
 	if err := c.response(code, []byte{}); err != nil {

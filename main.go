@@ -34,10 +34,6 @@ func main() {
 
 	api := r.Group("api")
 
-	api.Preflight("/json", func(c *fox.Context) {
-		c.Status(200)
-	})
-
 	api.Get("/json", json_get)
 	api.Post("/json", json)
 
@@ -52,11 +48,9 @@ func main() {
 }
 
 func cookies(c *fox.Context) {
-	fmt.Println(c.Headers["Cookie"])
+	c.Cookie("token", "this is a epic token value", fox.CookieAttributes{BASE64: true, MaxAge: 60 * 60 * 24})
 
-	fmt.Println(c.Cookies)
-
-	c.Status(fox.Status.ImaTeapot)
+	c.JSON(fox.Status.Ok, c.ResHeaders())
 }
 
 func auth(c *fox.Context) {
@@ -131,9 +125,7 @@ func file(c *fox.Context) {
 	c.Cookie("name", "BAD ; VALUE", fox.CookieAttributes{ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
 	c.Cookie("test2", "DAMN, GOOD VALUE", fox.CookieAttributes{ExpiresIn: 1000 * 60 * 60, SameSite: "Strict"})
 
-	dirname, _ := os.Getwd()
-
-	c.File(fox.Status.Ok, dirname+"/html/index.html")
+	c.File(fox.Status.Ok, "./html/index.html")
 }
 
 func book(c *fox.Context) {
