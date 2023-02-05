@@ -21,7 +21,7 @@ type router struct {
 	handlers *[]handler
 	prefix   string
 
-	preflight *[]handler
+	preflight *handler
 
 	root bool
 
@@ -37,7 +37,7 @@ type static struct {
 Initializes root router
 */
 func Init() *router {
-	return &router{handlers: &[]handler{}, root: true, static: &map[string]static{}}
+	return &router{handlers: &[]handler{}, preflight: &handler{}, root: true, static: &map[string]static{}}
 }
 
 /*
@@ -53,7 +53,7 @@ func (r *router) Group(group string) *router {
 		group = "/" + group
 	}
 
-	return &router{handlers: r.handlers, prefix: r.prefix + group, static: r.static}
+	return &router{handlers: r.handlers, preflight: r.preflight, prefix: r.prefix + group, static: r.static}
 }
 
 /*
@@ -76,9 +76,9 @@ func Get[T any](target any, keys ...string) T {
 		log.Panic(errors.New("cannot nest target at key '" + key + "' because target is either not a map or nil"))
 	}
 
-	next := target.(map[string]any)
+	next := reflect.ValueOf(target).MapIndex(reflect.ValueOf(key)).Interface()
 
-	return Get[T](next[key], keys...)
+	return Get[T](next, keys...)
 }
 
 /*
@@ -117,11 +117,15 @@ func (r *router) Static(name string, relative_path ...string) {
 	(*r.static)[name] = static{filepath.Dir(path), rex}
 }
 
+/*
+Starts a server at the specified port
+*/
 func Listen(r *router, port int) error {
+
 	ln, err := net.Listen("tcp", fmt.Sprint(":", port))
 
 	if err != nil {
-		return err
+		log.Panic(err)
 	}
 
 	for {
@@ -166,9 +170,9 @@ func request(conn net.Conn, r router) {
 			c.setHeaders = make(map[string][]string)
 			c._conn = conn
 
-			if c.Headers["content-length"] != "" {
+			if c.Headers["Content-Length"] != "" {
 
-				if cl, err := strconv.Atoi(c.Headers["content-length"]); err == nil {
+				if cl, err := strconv.Atoi(c.Headers["Content-Length"]); err == nil {
 					content_length = cl
 				} else {
 					c.Text(Status.BadRequest, "malformed content length")
@@ -197,7 +201,11 @@ func request(conn net.Conn, r router) {
 
 func (r *router) handleRequests(c Context, body []byte) {
 
-	status := handleCors(&c)
+	if r.preflight != nil && c.Method == "OPTIONS" {
+		r.preflight.stack[0](&c)
+
+		return
+	}
 
 	for _, handler := range *r.handlers {
 		if handler.method != c.Method {
@@ -213,7 +221,7 @@ func (r *router) handleRequests(c Context, body []byte) {
 		c.Raw = body
 		c.Params = params
 		c.Query = queries
-		c.Cookies = parser.Cookies(c.Headers["cookie"])
+		c.Cookies = parser.Cookies(c.Headers["Cookie"])
 
 		handleBody(body, &c)
 
@@ -236,16 +244,16 @@ func (r *router) handleRequests(c Context, body []byte) {
 
 	//Checks if the url path is related to any of the static handlers
 	if !r.handleStatic(&c) {
-		c.Status(status)
+		c.Status(Status.NotFound)
 	}
 }
 
 func handleBody(body []byte, c *Context) {
-	if c.Headers["content-type"] == "" {
+	if c.Headers["Content-Type"] == "" {
 		return
 	}
 
-	segments := strings.Split(c.Headers["content-type"], "; ")
+	segments := strings.Split(c.Headers["Content-Type"], "; ")
 
 	switch segments[0] {
 	case "application/json":
@@ -264,52 +272,6 @@ func handleBody(body []byte, c *Context) {
 	}
 }
 
-/*
-Checks cors and returns the default error status code
-*/
-func handleCors(c *Context) int {
-
-	origin_h := c.Headers["origin"]
-
-	if origin_h == "" {
-		return 404
-	}
-
-	origin, isAllowedOrigin := corsOrigin(origin_h, c, corsoptions.Origins)
-
-	if !isAllowedOrigin {
-		c.SetHeader("Access-Control-Allow-Origin", "null")
-
-		return Status.Forbidden
-	}
-
-	methods, isAllowedMethod := corsMethod(c.Headers["access-control-request-method"], c, corsoptions._formattedMethods, corsoptions.Methods)
-
-	if !isAllowedMethod {
-		return Status.MethodNotAllowed
-	}
-
-	if corsoptions.Credentials {
-		c.SetHeader("Access-Control-Allow-Credentials", "true")
-	}
-
-	c.SetHeader("Access-Control-Allow-Origin", origin)
-
-	if methods != "" {
-		c.SetHeader("Access-Control-Allow-Methods", methods)
-	}
-
-	allowedheaders, isAllowedHeaders := corsHeaders(c.Headers["access-control-request-headers"], corsoptions._formattedHeaders, corsoptions._mappedHeaders)
-
-	if !isAllowedHeaders {
-		return Status.Forbidden
-	}
-
-	c.SetHeader("Access-Control-Allow-Headers", allowedheaders)
-
-	return 404
-}
-
 func (r *router) handleStatic(c *Context) bool {
 
 	for _, s := range *r.static {
@@ -324,9 +286,8 @@ func (r *router) handleStatic(c *Context) bool {
 
 			path := s.path + c.Url
 
-			//If file does not exist return true anyways since it still matched the prefix
 			if _, err := os.Stat(path); os.IsNotExist(err) {
-				return true
+				continue
 			}
 
 			//Send the file to the request endpoint

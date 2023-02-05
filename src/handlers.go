@@ -17,34 +17,39 @@ type handler struct {
 }
 
 func (r *router) Get(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "GET", stack)
+	*r.handlers = append(*r.handlers, r.addHandler(path, "GET", stack))
 }
 
 func (r *router) Post(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "POST", stack)
+	*r.handlers = append(*r.handlers, r.addHandler(path, "POST", stack))
 }
 
 func (r *router) Put(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "PUT", stack)
+	*r.handlers = append(*r.handlers, r.addHandler(path, "PUT", stack))
 }
 
 func (r *router) Delete(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "DELETE", stack)
+	*r.handlers = append(*r.handlers, r.addHandler(path, "DELETE", stack))
 }
 
 func (r *router) Head(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "HEAD", stack)
+	*r.handlers = append(*r.handlers, r.addHandler(path, "HEAD", stack))
 }
 
 func (r *router) Patch(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "PATCH", stack)
+	*r.handlers = append(*r.handlers, r.addHandler(path, "PATCH", stack))
 }
 
 func (r *router) Options(path string, stack ...func(c *Context)) {
-	r.addHandler(path, "OPTIONS", stack)
+	*r.handlers = append(*r.handlers, r.addHandler(path, "OPTIONS", stack))
 }
 
-func (r *router) addHandler(path string, method string, stack []func(c *Context)) {
+func (r *router) Preflight(handler func(c *Context)) {
+
+	*r.preflight = r.addHandler("", "", []func(c *Context){handler})
+}
+
+func (r *router) addHandler(path string, method string, stack []func(c *Context)) handler {
 
 	rex := regexp.MustCompile("^:([^;]+);(.+?)$|^:([^;]+)$")
 
@@ -87,7 +92,7 @@ func (r *router) addHandler(path string, method string, stack []func(c *Context)
 		paramArr = append(paramArr, [][]string{param_info}...)
 
 		if params[param_name] {
-			log.Panic("duplicate path params (" + param_name + ") at " + path)
+			log.Panic("duplicate path params " + param_name + " at " + path)
 		}
 
 		params[param_name] = true
@@ -95,5 +100,5 @@ func (r *router) addHandler(path string, method string, stack []func(c *Context)
 		path_rex = strings.Replace(path_rex, regexp.QuoteMeta(path_seg), "(.+?)", 1)
 	}
 
-	*r.handlers = append(*r.handlers, handler{path: path, method: method, stack: stack, rex: "^" + path_rex + "$", params: paramArr})
+	return handler{path: path, method: method, stack: stack, rex: "^" + path_rex + "$", params: paramArr}
 }

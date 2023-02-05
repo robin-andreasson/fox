@@ -14,10 +14,14 @@ func main() {
 	r := fox.Init()
 
 	fox.CORS(fox.CorsOptions{
-		Origins:     []string{"http://127.0.0.1:5500", "*"},
-		Methods:     []string{"POST", "*"},
+		Origins:     []string{"http://127.0.0.1:5500", "http://localhost:5500"},
+		Methods:     []string{"GET", "POST"},
 		Headers:     []string{"content-type"},
 		Credentials: true,
+	})
+
+	r.Preflight(func(c *fox.Context) {
+		c.Status(fox.Status.Ok)
 	})
 
 	r.Static("public")
@@ -42,6 +46,16 @@ func main() {
 	form.Post("/urlencoded", urlencoded)
 	form.Post("/image", image)
 
+	method := r.Group("method")
+
+	method.Head("/head", func(c *fox.Context) {
+		fmt.Println("WOW")
+		fmt.Println(c.Headers)
+		fmt.Println(c.Method)
+
+		c.Head(fox.Status.Ok)
+	})
+
 	fmt.Println("Starting port at", 3000)
 
 	fox.Listen(r, 3000)
@@ -60,6 +74,8 @@ func auth(c *fox.Context) {
 }
 
 func json(c *fox.Context) {
+
+	fmt.Println(c.Cookies)
 
 	c.Cookie("token", "This is an insane token value", fox.CookieAttributes{
 		BASE64:   true,
@@ -93,8 +109,6 @@ func json_get(c *fox.Context) {
 
 func image(c *fox.Context) {
 
-	//fmt.Println(c.Body)
-
 	files := fox.Get[map[string]any](c.Body, "Files", "image")
 
 	data := fox.Get[[]byte](files, "Data")
@@ -107,7 +121,7 @@ func image(c *fox.Context) {
 		log.Panic(err)
 	}
 
-	c.File(fox.Status.Ok, filename)
+	c.JSON(fox.Status.Ok, c.Body)
 }
 
 func home(c *fox.Context) {

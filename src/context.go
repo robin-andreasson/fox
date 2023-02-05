@@ -1,12 +1,11 @@
 package fox
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strings"
-	"time"
 
 	"encoding/base64"
 
@@ -57,30 +56,34 @@ func (c *Context) ResHeaders() map[string][]string {
 /*
 Set a header by passing a name and value
 */
-func (c *Context) SetHeader(name string, value string) {
+func (c *Context) SetHeader(name string, value string) error {
 
-	name = strings.ToLower(name)
+	name = strings.Title(strings.ToLower(name))
 
-	if name == "set-cookie" {
+	if name == "Set-Cookie" {
 
 		if len([]byte(value)) > 4093 {
-			log.Panic("Set-Cookie value exceeded the size limit of 4093")
+			return errors.New("set-cookie value exceeded the size limit of 4093")
 		}
 
 		c.setHeaders[name] = append(c.setHeaders[name], value)
 	} else {
 		c.setHeaders[name] = []string{value}
 	}
+
+	return nil
 }
 
-func (c *Context) Head(code int) {
+func (c *Context) Head(code int) error {
 	if c.Method != "HEAD" {
-		log.Panic("Head function can only be called when method is HEAD")
+		return errors.New("head function can only be called when method is HEAD")
 	}
 
 	if err := c.response(code, []byte{}); err != nil {
-		log.Panic(err)
+		return err
 	}
+
+	return nil
 }
 
 /*
@@ -88,13 +91,11 @@ Send text back to the request endpoint
 
 content type is set to text/html; charset=utf-8
 */
-func (c *Context) Text(code int, body string) {
+func (c *Context) Text(code int, body string) error {
 
 	c.SetHeader("Content-Type", "text/html; charset=utf-8")
 
-	if err := c.response(code, []byte(body)); err != nil {
-		log.Panic(err)
-	}
+	return c.response(code, []byte(body))
 }
 
 /*
@@ -104,62 +105,56 @@ basic mime types like images, zips, fonts, pdf and mp4 files are calculated.
 
 mime types from script files that is in need for a sniffing technique is found through file extension
 */
-func (c *Context) File(code int, path string) {
+func (c *Context) File(code int, path string) error {
 
 	bytes, err := os.ReadFile(path)
 
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 
 	mime := parser.Mime(path, bytes)
 
 	c.SetHeader("Content-Type", mime)
 
-	if err = c.response(code, bytes); err != nil {
-		log.Panic(err)
-	}
+	return c.response(code, bytes)
 }
 
 /*
 Send application/json response to the request endpoint
 */
-func (c *Context) JSON(status int, body any) {
+func (c *Context) JSON(status int, body any) error {
 
 	if !parser.IsMap(body) && !parser.IsArray(body) {
-		log.Panic("invalid type for body, expected map or array/slice")
+		return errors.New("invalid type for body, expected map or array/slice")
 	}
 
 	s, err := parser.JSONMarshal(body)
 
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 
 	c.SetHeader("Content-Type", "application/json")
 
-	if err := c.response(status, []byte(s)); err != nil {
-		log.Panic(err)
-	}
+	return c.response(status, []byte(s))
 }
 
-func (c *Context) Status(status int) {
-	if err := c.response(status, []byte{}); err != nil {
-		log.Panic(err)
-	}
+func (c *Context) Status(status int) error {
+	return c.response(status, []byte{})
 }
 
-func (c *Context) Redirect(path string) {
+func (c *Context) Redirect(path string) error {
 
 	c.SetHeader("Location", path)
 
-	c.Status(Status.SeeOther)
+	return c.Status(Status.SeeOther)
 }
 
 /*
 Set a cookie
 */
-func (c *Context) Cookie(name string, value string, attributes CookieAttributes) {
+func (c *Context) Cookie(name string, value string, attributes CookieAttributes) error {
 
 	cookie := name + "="
 
@@ -172,7 +167,7 @@ func (c *Context) Cookie(name string, value string, attributes CookieAttributes)
 	if attributes.MaxAge != 0 {
 		cookie += "; Max-Age=" + fmt.Sprint(attributes.MaxAge)
 	} else if attributes.ExpiresIn != 0 {
-		cookie += "; Expires=" + formatTime(time.Duration(attributes.ExpiresIn))
+		cookie += "; Expires=" + formatTime(attributes.ExpiresIn)
 	}
 
 	if attributes.Partitioned {
@@ -208,13 +203,20 @@ func (c *Context) Cookie(name string, value string, attributes CookieAttributes)
 	case "":
 		break
 	default:
-		log.Panic(fmt.Errorf("samesite attribute can only have the values 'Strict', 'Lax' and 'None'"))
+		return errors.New("samesite attribute is limited between the values Strict, Lax and None")
 	}
 
-	c.SetHeader("Set-Cookie", cookie)
+	return c.SetHeader("Set-Cookie", cookie)
 }
 
 func (c *Context) response(code int, body []byte) error {
+
+	status := handleCors(c)
+
+	if status != 0 {
+		code = status
+		body = []byte{}
+	}
 
 	response := fmt.Sprint("HTTP/1.1 ", code, "\r\n")
 
@@ -230,14 +232,11 @@ func (c *Context) response(code int, body []byte) error {
 		}
 	}
 
+	response += "Content-Length: " + fmt.Sprint(len(body)) + "\r\n\r\n"
+
 	response_bytes := []byte(response)
 
 	if c.Method != "HEAD" {
-
-		contentLength := []byte(fmt.Sprint("Content-Length: ", len(body), "\r\n\r\n"))
-
-		response_bytes = append(response_bytes, contentLength...)
-
 		response_bytes = append(response_bytes, body...)
 	}
 
@@ -245,9 +244,5 @@ func (c *Context) response(code int, body []byte) error {
 
 	c._conn.Close()
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

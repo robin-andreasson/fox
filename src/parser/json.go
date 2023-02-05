@@ -293,7 +293,7 @@ func JSONMarshal(v any) (string, error) {
 		if isBytes(v) {
 			b64str := b64.StdEncoding.EncodeToString(v.([]byte))
 
-			return b64str, nil
+			return `"` + b64str + `"`, nil
 		}
 
 		s += "["

@@ -15,7 +15,6 @@ var extMimes = map[string]string{
 	"xml":  "application/xml",
 }
 
-// Normally there would be an "ignored" field
 var mimes = []mime_patterns{
 	//IMAGE
 	{mime: "image/x-icon", byte_pattern: []byte{0x00, 0x00, 0x00, 0x01, 0x00}, pattern_mask: []byte{0xFF, 0xFF, 0xFF, 0xFF}, ignored: map[byte]bool{}},

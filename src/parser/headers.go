@@ -12,7 +12,7 @@ func Headers(raw string) (string, string, map[string]string) {
 
 	route := strings.Split(raw_headers[0], " ")
 
-	headers["protocol"] = route[2]
+	headers["Protocol"] = route[2]
 
 	for i := 1; i < len(raw_headers); i++ {
 		header, value, found := strings.Cut(raw_headers[i], ": ")
@@ -21,7 +21,7 @@ func Headers(raw string) (string, string, map[string]string) {
 			continue
 		}
 
-		header = strings.ToLower(urldecode(header))
+		header = strings.Title(strings.ToLower(urldecode(header)))
 		value = urldecode(value)
 
 		headers[header] = value

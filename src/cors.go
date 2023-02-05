@@ -1,112 +1,182 @@
 package fox
 
-import (
-	"strings"
-)
-
 type CorsOptions struct {
 	Origins     []string
 	Methods     []string
 	Headers     []string
 	Credentials bool
-
-	_formattedMethods string
-	_formattedHeaders string
-	_mappedHeaders    map[string]bool
 }
 
-// Currently not used
-var cors_safelist_rh = map[string]string{
-	"accept-language":  "[0-9a-zA-Z]+",
-	"content-language": "[0-9a-zA-Z]+",
-	"accept":           `^[^"\(\):<>?@\[\\\]{}]+$`,
-	"content-type":     `^[^"\(\):<>?@\[\\\]{}]+$`,
+type formattedCorsOptions struct {
+	credentials bool
+
+	formattedMethods string
+	formattedHeaders string
+
+	mappedOrigins map[string]bool
+	mappedMethods map[string]bool
+	mappedHeaders map[string]bool
 }
 
-var corsoptions = CorsOptions{}
+var corsoptions = formattedCorsOptions{}
 
+/*
+Set Cross-Origin Resource Sharing headers globally
+*/
 func CORS(options CorsOptions) {
-	corsoptions = options
 
-	corsoptions._mappedHeaders = make(map[string]bool)
+	corsoptions.mappedOrigins = make(map[string]bool)
+	corsoptions.mappedMethods = make(map[string]bool)
+	corsoptions.mappedHeaders = make(map[string]bool)
+
+	if options.Origins != nil {
+		for _, o := range options.Origins {
+			corsoptions.mappedOrigins[o] = true
+		}
+	}
 
 	if options.Methods != nil {
-		corsoptions._formattedMethods = formatWithDelimiter(corsoptions.Methods, ", ", "*")
+		corsoptions.formattedMethods = formatWithDelimiter(options.Methods, ", ", "*")
+
+		for _, m := range options.Methods {
+			corsoptions.mappedMethods[m] = true
+		}
 	}
 
 	if options.Headers != nil {
-		corsoptions._formattedHeaders = formatWithDelimiter(corsoptions.Headers, ", ", "*")
+		corsoptions.formattedHeaders = formatWithDelimiter(options.Headers, ", ", "*")
 
 		for _, h := range options.Headers {
-			corsoptions._mappedHeaders[h] = true
-		}
-	}
-}
-
-func corsOrigin(origin string, c *Context, allowedOrigins []string) (string, bool) {
-	//if origins is not set, send forbidden
-	if corsoptions.Origins == nil {
-		c.Status(Status.Forbidden)
-
-		return "", false
-	}
-
-	for _, org := range allowedOrigins {
-		if origin == org || org == "*" {
-			return org, true
+			corsoptions.mappedHeaders[h] = true
 		}
 	}
 
-	return "", false
+	if options.Credentials {
+		corsoptions.credentials = true
+	}
 }
 
-func corsMethod(method string, c *Context, formattedMethods string, allowedMethods []string) (string, bool) {
+/*
+Checks cors and returns the default error status code
+*/
+func handleCors(c *Context) int {
 
-	if method == "" {
+	sec_fetch_site := c.Headers["Sec-Fetch-Site"]
+
+	if sec_fetch_site != "cross-site" && sec_fetch_site != "same-site" {
+		return 0
+	}
+
+	//ORIGIN
+	origin_h := c.Headers["Origin"]
+
+	set_acao := c.setHeaders["Access-Control-Allow-Origin"]
+	mappedOrigins := corsoptions.mappedOrigins
+
+	if len(set_acao) == 1 {
+		origin_h = set_acao[0]
+		mappedOrigins = map[string]bool{set_acao[0]: true}
+	}
+
+	origin, isAllowedOrigin := validateCors(origin_h, mappedOrigins, origin_h, true)
+
+	if !isAllowedOrigin {
+		return Status.Forbidden
+	}
+
+	if origin != "" {
+		c.SetHeader("Access-Control-Allow-Origin", origin)
+	}
+
+	if corsoptions.credentials {
+		c.SetHeader("Access-Control-Allow-Credentials", "true")
+	}
+	//ORIGIN
+
+	acrm := c.Headers["Access-Control-Request-Method"]
+	acrh := c.Headers["Access-Control-Request-Headers"]
+
+	if (acrm == "" && acrh == "") || (c.Method != "OPTIONS") {
+		return 0
+	}
+
+	//METHODS
+	set_acam := c.setHeaders["Access-Control-Allow-Methods"]
+	mappedMethods := corsoptions.mappedMethods
+	formattedMethods := corsoptions.formattedMethods
+
+	if len(set_acam) == 1 {
+		mappedMethods = splitComma(set_acam[0])
+		formattedMethods = set_acam[0]
+	}
+
+	acam, isAllowedMethod := validateCors(acrm, mappedMethods, formattedMethods, true)
+
+	if !isAllowedMethod {
+		return Status.MethodNotAllowed
+	}
+
+	if acam != "" {
+		c.SetHeader("Access-Control-Allow-Methods", acam)
+	}
+	//METHODS
+
+	//HEADERS
+	set_acah := c.setHeaders["Access-Control-Allow-Headers"]
+	mappedHeaders := corsoptions.mappedHeaders
+	formattedHeaders := corsoptions.formattedHeaders
+
+	if len(set_acah) == 1 {
+		mappedHeaders = splitComma(set_acah[0])
+		formattedMethods = set_acah[0]
+	}
+
+	headers, isAllowedHeaders := validateCors(acrh, mappedHeaders, formattedHeaders, false)
+
+	if !isAllowedHeaders {
+		return Status.Forbidden
+	}
+
+	if headers != "" {
+		c.SetHeader("Access-Control-Allow-Headers", headers)
+	}
+	//HEADERS
+
+	return 0
+}
+
+func validateCors(target string, allowedTargets map[string]bool, formattedTargets string, isNotHeaders bool) (string, bool) {
+
+	if target == "" {
 		return "", true
 	}
 
-	//if methods is not set, send method not allowed
-	if corsoptions.Methods == nil {
-		c.Status(Status.MethodNotAllowed)
-
+	if allowedTargets == nil {
 		return "", false
 	}
 
-	for _, mth := range allowedMethods {
-		if method == strings.ToUpper(mth) {
-			return formattedMethods, true
-		} else if mth == "*" {
-
-			return "*", true
-		}
-	}
-
-	return "", false
-}
-
-func corsHeaders(acrh string, formattedHeaders string, allowedHeaders map[string]bool) (string, bool) {
-
-	if acrh == "" {
-		return "", true
-	}
-
-	if len(allowedHeaders) == 0 {
-		return "", false
-	}
-
-	//if wildcard exists or no "Access-Control-Request-Headers" header, return true
-	if allowedHeaders["*"] {
+	if allowedTargets["*"] {
 		return "*", true
 	}
 
-	acrh_a := strings.Split(acrh, ", ")
+	if isNotHeaders {
 
-	for _, name := range acrh_a {
-		if !allowedHeaders[name] {
-			return "", false
+		if allowedTargets[target] {
+			return formattedTargets, true
 		}
+
+	} else {
+
+		target_map := splitComma(target)
+
+		for header := range target_map {
+			if !allowedTargets[header] {
+				return "", false
+			}
+		}
+
+		return formattedTargets, true
 	}
 
-	return formattedHeaders, true
+	return "", false
 }

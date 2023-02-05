@@ -1,5 +1,0 @@
-package parser
-
-func getRelativePath() {
-
-}
