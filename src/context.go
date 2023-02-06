@@ -1,14 +1,18 @@
 package fox
 
 import (
+	"crypto/sha256"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"encoding/base64"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/robin-andreasson/fox/parser"
 )
 
@@ -18,7 +22,8 @@ type Context struct {
 	Headers    map[string]string
 	setHeaders map[string][]string
 
-	Body any
+	Body    any
+	Session any
 
 	Params  map[string]string
 	Query   map[string]string
@@ -79,11 +84,7 @@ func (c *Context) Head(code int) error {
 		return errors.New("head function can only be called when method is HEAD")
 	}
 
-	if err := c.response(code, []byte{}); err != nil {
-		return err
-	}
-
-	return nil
+	return c.response(code, []byte{})
 }
 
 /*
@@ -121,7 +122,7 @@ func (c *Context) File(code int, path string) error {
 }
 
 /*
-Send application/json response to the request endpoint
+Send application/json response
 */
 func (c *Context) JSON(status int, body any) error {
 
@@ -149,6 +150,52 @@ func (c *Context) Redirect(path string) error {
 	c.SetHeader("Location", path)
 
 	return c.Status(Status.SeeOther)
+}
+
+func (c *Context) SetSession(payload any) error {
+
+	if sessionOpt == (SessionOptions{}) {
+		return errors.New("session options are nil")
+	}
+
+	if !parser.IsMap(payload) && !parser.IsArray(payload) {
+		return errors.New("invalid type for payload, expected map or array/slice")
+	}
+
+	payload, err := parser.JSONMarshal(payload)
+
+	if err != nil {
+		return err
+	}
+
+	hash := sha256.New()
+	data := []byte(fmt.Sprint(sessionOpt.Secret, payload, sessionOpt.Secret))
+	hash.Write(data)
+	sessID := fmt.Sprintf("%x", hash.Sum(nil))
+
+	db, err := sql.Open("sqlite3", sessionOpt.Path)
+
+	if err != nil {
+		return err
+	}
+
+	defer db.Close()
+
+	stmt, err := db.Prepare("INSERT OR REPLACE INTO sessions VALUES (?, ?, ?)")
+
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(sessID, payload, time.Now().UnixMilli()+int64(sessionOpt.TimeOut))
+
+	if err != nil {
+		return err
+	}
+
+	c.Cookie("FOXSESSID", sessID, sessionOpt.Cookie)
+
+	return nil
 }
 
 /*

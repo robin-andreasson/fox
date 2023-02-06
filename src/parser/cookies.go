@@ -22,8 +22,11 @@ func Cookies(s string) map[string]string {
 			continue
 		}
 
-		if v, err := b64.StdEncoding.DecodeString(value); err == nil {
-			value = string(v)
+		if name != "FOXSESSID" {
+			if v, err := b64.StdEncoding.DecodeString(value); err == nil {
+
+				value = string(v)
+			}
 		}
 
 		cookies[name] = value

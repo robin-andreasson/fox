@@ -33,7 +33,6 @@ func FormData(body []byte, delimiter []byte) any {
 
 		contentType := string(formdata[2])
 
-		//Removing the funky \n at the end (I have literally no idea why its there)
 		value := formdata[3]
 
 		ct := contentType_rex.FindStringSubmatch(contentType)
@@ -43,6 +42,7 @@ func FormData(body []byte, delimiter []byte) any {
 
 			name := noFile_rex.FindStringSubmatch(disposition)[1]
 
+			//Removing the funky \n at the end (I have literally no idea why its there)
 			result[name] = string(value[0 : len(value)-2])
 
 			continue

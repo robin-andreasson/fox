@@ -1,6 +1,7 @@
 package fox
 
 import (
+	"errors"
 	"regexp"
 	"time"
 )
@@ -41,4 +42,14 @@ func splitComma(target string) map[string]bool {
 	}
 
 	return mappedTarget
+}
+
+func Ext(path string) (string, error) {
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == '.' {
+			return path[i+1:], nil
+		}
+	}
+
+	return "", errors.New("no extension")
 }

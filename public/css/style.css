@@ -1,0 +1,10 @@
+#test {
+    display: flex;
+    flex-direction: column;
+
+    width: 200px;
+    height: 100px;
+
+    gap: 10px;
+    background-color: red;
+}

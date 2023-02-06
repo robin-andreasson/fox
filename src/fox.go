@@ -23,8 +23,6 @@ type router struct {
 
 	preflight *handler
 
-	root bool
-
 	static *map[string]static
 }
 
@@ -37,7 +35,7 @@ type static struct {
 Initializes root router
 */
 func Init() *router {
-	return &router{handlers: &[]handler{}, preflight: &handler{}, root: true, static: &map[string]static{}}
+	return &router{handlers: &[]handler{}, preflight: &handler{}, static: &map[string]static{}}
 }
 
 /*
@@ -120,7 +118,7 @@ func (r *router) Static(name string, relative_path ...string) {
 /*
 Starts a server at the specified port
 */
-func Listen(r *router, port int) error {
+func Listen(port int, r *router) error {
 
 	ln, err := net.Listen("tcp", fmt.Sprint(":", port))
 
@@ -201,12 +199,6 @@ func request(conn net.Conn, r router) {
 
 func (r *router) handleRequests(c Context, body []byte) {
 
-	if r.preflight != nil && c.Method == "OPTIONS" {
-		r.preflight.stack[0](&c)
-
-		return
-	}
-
 	for _, handler := range *r.handlers {
 		if handler.method != c.Method {
 			continue
@@ -224,6 +216,7 @@ func (r *router) handleRequests(c Context, body []byte) {
 		c.Cookies = parser.Cookies(c.Headers["Cookie"])
 
 		handleBody(body, &c)
+		handleSession(c.Cookies["FOXSESSID"], &c)
 
 		for _, function := range handler.stack {
 

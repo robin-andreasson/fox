@@ -21,7 +21,7 @@ type formattedCorsOptions struct {
 var corsoptions = formattedCorsOptions{}
 
 /*
-Set Cross-Origin Resource Sharing headers globally
+Set Cross-Origin Resource Sharing headers and handle OPTIONS requests
 */
 func CORS(options CorsOptions) {
 
@@ -57,7 +57,7 @@ func CORS(options CorsOptions) {
 }
 
 /*
-Checks cors and returns the default error status code
+Checks cors headers and returns the appropiate status code (zero if nothing should happen)
 */
 func handleCors(c *Context) int {
 
@@ -142,7 +142,7 @@ func handleCors(c *Context) int {
 	}
 	//HEADERS
 
-	return 0
+	return Status.Ok
 }
 
 func validateCors(target string, allowedTargets map[string]bool, formattedTargets string, isNotHeaders bool) (string, bool) {

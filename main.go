@@ -20,9 +20,22 @@ func main() {
 		Credentials: true,
 	})
 
-	r.Preflight(func(c *fox.Context) {
-		c.Status(fox.Status.Ok)
+	err := fox.Session(fox.SessionOptions{
+		Secret:  "tangentbordkatt",
+		TimeOut: 1000 * 30,
+		Path:    "./session-store.db",
+		Cookie: fox.CookieAttributes{
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: "Lax",
+			Path:     "/",
+			MaxAge:   1000,
+		},
 	})
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	r.Static("public")
 
@@ -56,9 +69,29 @@ func main() {
 		c.Head(fox.Status.Ok)
 	})
 
+	session := r.Group("session")
+
+	session.Get("/getSession", func(c *fox.Context) {
+		fmt.Println(c.Cookies)
+		fmt.Print("\r\n")
+		fmt.Println(c.Session)
+
+		err := c.File(fox.Status.Ok, "./html/session.html")
+
+		if err != nil {
+			fmt.Println(err)
+		}
+	})
+
+	session.Post("/createSession", func(c *fox.Context) {
+		fmt.Println(c.SetSession(c.Body))
+
+		c.Status(fox.Status.Ok)
+	})
+
 	fmt.Println("Starting port at", 3000)
 
-	fox.Listen(r, 3000)
+	fox.Listen(3000, r)
 }
 
 func cookies(c *fox.Context) {
@@ -74,8 +107,6 @@ func auth(c *fox.Context) {
 }
 
 func json(c *fox.Context) {
-
-	fmt.Println(c.Cookies)
 
 	c.Cookie("token", "This is an insane token value", fox.CookieAttributes{
 		BASE64:   true,
@@ -121,7 +152,7 @@ func image(c *fox.Context) {
 		log.Panic(err)
 	}
 
-	c.JSON(fox.Status.Ok, c.Body)
+	c.Redirect("/")
 }
 
 func home(c *fox.Context) {
