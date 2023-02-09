@@ -220,7 +220,11 @@ func (r *router) handleRequests(c Context, body []byte) {
 
 		for _, function := range handler.stack {
 
-			function(&c)
+			err := function(&c)
+
+			if c.Error == nil {
+				c.Error = append(c.Error, err)
+			}
 
 			if !c._next {
 

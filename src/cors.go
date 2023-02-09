@@ -112,12 +112,12 @@ func handleCors(c *Context) int {
 
 	acam, isAllowedMethod := validateCors(acrm, mappedMethods, formattedMethods, true)
 
-	if !isAllowedMethod {
-		return Status.MethodNotAllowed
-	}
-
 	if acam != "" {
 		c.SetHeader("Access-Control-Allow-Methods", acam)
+	}
+
+	if !isAllowedMethod {
+		return Status.MethodNotAllowed
 	}
 	//METHODS
 
@@ -128,17 +128,17 @@ func handleCors(c *Context) int {
 
 	if len(set_acah) == 1 {
 		mappedHeaders = splitComma(set_acah[0])
-		formattedMethods = set_acah[0]
+		formattedHeaders = set_acah[0]
 	}
 
-	headers, isAllowedHeaders := validateCors(acrh, mappedHeaders, formattedHeaders, false)
+	acah, isAllowedHeaders := validateCors(acrh, mappedHeaders, formattedHeaders, false)
+
+	if acah != "" {
+		c.SetHeader("Access-Control-Allow-Headers", acah)
+	}
 
 	if !isAllowedHeaders {
 		return Status.Forbidden
-	}
-
-	if headers != "" {
-		c.SetHeader("Access-Control-Allow-Headers", headers)
 	}
 	//HEADERS
 
@@ -148,7 +148,7 @@ func handleCors(c *Context) int {
 func validateCors(target string, allowedTargets map[string]bool, formattedTargets string, isNotHeaders bool) (string, bool) {
 
 	if target == "" {
-		return "", true
+		return formattedTargets, true
 	}
 
 	if allowedTargets == nil {
@@ -171,12 +171,12 @@ func validateCors(target string, allowedTargets map[string]bool, formattedTarget
 
 		for header := range target_map {
 			if !allowedTargets[header] {
-				return "", false
+				return formattedTargets, false
 			}
 		}
 
 		return formattedTargets, true
 	}
 
-	return "", false
+	return formattedTargets, false
 }

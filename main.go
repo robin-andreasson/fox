@@ -15,15 +15,16 @@ func main() {
 
 	fox.CORS(fox.CorsOptions{
 		Origins:     []string{"http://127.0.0.1:5500", "http://localhost:5500"},
-		Methods:     []string{"GET", "POST"},
+		Methods:     []string{"GET", "POST", "PUT"},
 		Headers:     []string{"content-type"},
 		Credentials: true,
 	})
 
-	err := fox.Session(fox.SessionOptions{
-		Secret:  "tangentbordkatt",
-		TimeOut: 1000 * 30,
-		Path:    "./session-store.db",
+	fox.Session(fox.SessionOptions{
+		Secret:            "tangentbordkatt",
+		TimeOut:           1000 * 30,
+		DeleteProbability: 100,
+		Path:              "./session-store.db",
 		Cookie: fox.CookieAttributes{
 			HttpOnly: true,
 			Secure:   true,
@@ -32,10 +33,6 @@ func main() {
 			MaxAge:   1000,
 		},
 	})
-
-	if err != nil {
-		fmt.Println(err)
-	}
 
 	r.Static("public")
 
@@ -52,7 +49,7 @@ func main() {
 	api := r.Group("api")
 
 	api.Get("/json", json_get)
-	api.Post("/json", json)
+	api.Put("/json", json)
 
 	form := r.Group("form")
 
@@ -61,52 +58,57 @@ func main() {
 
 	method := r.Group("method")
 
-	method.Head("/head", func(c *fox.Context) {
+	method.Head("/head", func(c *fox.Context) error {
 		fmt.Println("WOW")
 		fmt.Println(c.Headers)
 		fmt.Println(c.Method)
 
-		c.Head(fox.Status.Ok)
+		return c.Head(fox.Status.Ok)
 	})
 
 	session := r.Group("session")
 
-	session.Get("/getSession", func(c *fox.Context) {
-		fmt.Println(c.Cookies)
-		fmt.Print("\r\n")
-		fmt.Println(c.Session)
+	session.Get("/getSession", getSession)
 
-		err := c.File(fox.Status.Ok, "./html/session.html")
-
-		if err != nil {
-			fmt.Println(err)
-		}
-	})
-
-	session.Post("/createSession", func(c *fox.Context) {
-		fmt.Println(c.SetSession(c.Body))
-
-		c.Status(fox.Status.Ok)
-	})
+	session.Post("/createSession", createSession)
 
 	fmt.Println("Starting port at", 3000)
 
 	fox.Listen(3000, r)
 }
 
-func cookies(c *fox.Context) {
+func getSession(c *fox.Context) error {
+	fmt.Println(c.Cookies)
+	fmt.Print("\r\n")
+	fmt.Println(c.Session)
+
+	return c.File(fox.Status.Ok, "./html/session.html")
+}
+
+func createSession(c *fox.Context) error {
+	fmt.Println(c.SetSession(c.Body))
+
+	return c.Status(fox.Status.Ok)
+}
+
+func cookies(c *fox.Context) error {
 	c.Cookie("token", "this is a epic token value", fox.CookieAttributes{BASE64: true, MaxAge: 60 * 60 * 24})
 
-	c.JSON(fox.Status.Ok, c.ResHeaders())
+	return c.JSON(fox.Status.Ok, c.ResHeaders())
 }
 
-func auth(c *fox.Context) {
-	fmt.Println("AUTH!")
+func auth(c *fox.Context) error {
 
-	c.Next()
+	if c.Session == nil {
+		return c.Redirect("/")
+	}
+
+	return c.Next()
 }
 
-func json(c *fox.Context) {
+func json(c *fox.Context) error {
+
+	fmt.Println("YOU GOT HERE ANYWAYS?")
 
 	c.Cookie("token", "This is an insane token value", fox.CookieAttributes{
 		BASE64:   true,
@@ -117,10 +119,10 @@ func json(c *fox.Context) {
 		MaxAge:   60 * 60 * 24,
 	})
 
-	c.JSON(fox.Status.Ok, c.Body)
+	return c.JSON(fox.Status.Ok, c.Body)
 }
 
-func urlencoded(c *fox.Context) {
+func urlencoded(c *fox.Context) error {
 
 	fmt.Println(c.Body)
 
@@ -130,15 +132,15 @@ func urlencoded(c *fox.Context) {
 	fmt.Println(firstname)
 	fmt.Println(lastname)
 
-	c.JSON(fox.Status.Ok, c.Body)
+	return c.JSON(fox.Status.Ok, c.Body)
 }
 
-func json_get(c *fox.Context) {
+func json_get(c *fox.Context) error {
 
-	c.JSON(fox.Status.Ok, c.Headers)
+	return c.JSON(fox.Status.Ok, c.Headers)
 }
 
-func image(c *fox.Context) {
+func image(c *fox.Context) error {
 
 	files := fox.Get[map[string]any](c.Body, "Files", "image")
 
@@ -152,28 +154,28 @@ func image(c *fox.Context) {
 		log.Panic(err)
 	}
 
-	c.Redirect("/")
+	return c.Redirect("/")
 }
 
-func home(c *fox.Context) {
-	c.Text(fox.Status.Ok, "<h1>Home Page</h1>")
+func home(c *fox.Context) error {
+	return c.Text(fox.Status.Ok, "<h1>Home Page</h1>")
 }
 
-func profile(c *fox.Context) {
+func profile(c *fox.Context) error {
 
-	c.Text(fox.Status.Ok, "<h1>"+c.Params["name"]+"'s PROFILE PAGE!</h1>")
+	return c.Text(fox.Status.Ok, "<h1>"+c.Params["name"]+"'s PROFILE PAGE!</h1>")
 }
 
-func file(c *fox.Context) {
+func file(c *fox.Context) error {
 
 	c.Cookie("test", "damn thats a good value", fox.CookieAttributes{BASE64: true, ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
 	c.Cookie("name", "BAD ; VALUE", fox.CookieAttributes{ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
 	c.Cookie("test2", "DAMN, GOOD VALUE", fox.CookieAttributes{ExpiresIn: 1000 * 60 * 60, SameSite: "Strict"})
 
-	c.File(fox.Status.Ok, "./html/index.html")
+	return c.File(fox.Status.Ok, "./html/index.html")
 }
 
-func book(c *fox.Context) {
+func book(c *fox.Context) error {
 
-	c.Text(fox.Status.Ok, "<h1>Title: "+c.Params["title"]+" Page: "+c.Params["page"]+"</h1>")
+	return c.Text(fox.Status.Ok, "<h1>Title: "+c.Params["title"]+" Page: "+c.Params["page"]+"</h1>")
 }

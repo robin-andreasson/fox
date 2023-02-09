@@ -11,45 +11,40 @@ import (
 type handler struct {
 	path   string
 	method string
-	stack  []func(c *Context)
+	stack  []func(c *Context) error
 	rex    string
 	params [][]string
 }
 
-func (r *router) Get(path string, stack ...func(c *Context)) {
+func (r *router) Get(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "GET", stack))
 }
 
-func (r *router) Post(path string, stack ...func(c *Context)) {
+func (r *router) Post(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "POST", stack))
 }
 
-func (r *router) Put(path string, stack ...func(c *Context)) {
+func (r *router) Put(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "PUT", stack))
 }
 
-func (r *router) Delete(path string, stack ...func(c *Context)) {
+func (r *router) Delete(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "DELETE", stack))
 }
 
-func (r *router) Head(path string, stack ...func(c *Context)) {
+func (r *router) Head(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "HEAD", stack))
 }
 
-func (r *router) Patch(path string, stack ...func(c *Context)) {
+func (r *router) Patch(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "PATCH", stack))
 }
 
-func (r *router) Options(path string, stack ...func(c *Context)) {
+func (r *router) Options(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "OPTIONS", stack))
 }
 
-func (r *router) Preflight(handler func(c *Context)) {
-
-	*r.preflight = r.addHandler("", "", []func(c *Context){handler})
-}
-
-func (r *router) addHandler(path string, method string, stack []func(c *Context)) handler {
+func (r *router) addHandler(path string, method string, stack []func(c *Context) error) handler {
 
 	rex := regexp.MustCompile("^:([^;]+);(.+?)$|^:([^;]+)$")
 

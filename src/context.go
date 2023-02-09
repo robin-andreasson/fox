@@ -24,6 +24,7 @@ type Context struct {
 
 	Body    any
 	Session any
+	Error   []error
 
 	Params  map[string]string
 	Query   map[string]string
@@ -47,8 +48,10 @@ type CookieAttributes struct {
 	MaxAge      int
 }
 
-func (c *Context) Next() {
+func (c *Context) Next() error {
 	c._next = true
+
+	return nil
 }
 
 /*
