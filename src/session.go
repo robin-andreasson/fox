@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"runtime"
 	"time"
 
 	"database/sql"
@@ -14,16 +15,17 @@ import (
 )
 
 type SessionOptions struct {
-	Secret            string  // String used in session id hashing
-	TimeOut           int     // Milliseconds until session is expired in the session store, defaults to 24 hours
-	DeleteProbability float64 // value between 0 - 100 that represents the chance of fox clearing expired sessions
-	Path              string  // Path to the database file, fox uses sqlite as session store
-	Cookie            CookieAttributes
+	Secret           string  // String used in session id hashing
+	TimeOut          int     // Milliseconds until session is expired in the session store, defaults to 24 hours
+	ClearProbability float64 // value between 0 - 100 that represents the chance of fox clearing expired sessions
+	Cookie           CookieAttributes
+
+	path string
 }
 
 var sessionOpt SessionOptions
 
-const initdb string = `
+const dbinit string = `
     CREATE TABLE IF NOT EXISTS sessions (
     	sessID TEXT PRIMARY KEY,
     	payload TEXT,
@@ -43,26 +45,25 @@ NOTE: sqlite3 is used as session store meaning that a gcc compiler is needed
 func Session(options SessionOptions) {
 
 	if options.Secret == "" {
-		log.Panic("empty secret will lead to unsafe id hashing")
+		log.Panic("zero value secret will lead to unsafe id hashing")
 	}
 
 	if options.TimeOut == 0 {
 		options.TimeOut = 1000 * 60 * 60 * 24
 	}
 
-	if options.DeleteProbability < 0 || options.DeleteProbability > 100 {
-		log.Panic("invalid value for DeleteProbability, acceptable values are between 0 and 100")
+	_, path, _, _ := runtime.Caller(0)
+	options.path = Dir(path) + "/storage/session.sql"
+
+	if options.ClearProbability < 0 || options.ClearProbability > 100 {
+		log.Panic("invalid value for ClearProbability, acceptable values are between 0 and 100")
 	}
 
-	if _, err := os.Stat(options.Path); os.IsNotExist(err) {
-		log.Panic("sql file does not exist")
+	if err := os.Truncate(options.path, 0); err != nil {
+		log.Panic("could not clear session store before initialization")
 	}
 
-	if ext, err := Ext(options.Path); err != nil || (ext != "db" && ext != "sql") {
-		log.Panic("'db' and 'sql' are the only valid file extensions")
-	}
-
-	db, err := sql.Open("sqlite3", options.Path)
+	db, err := sql.Open("sqlite3", options.path)
 
 	if err != nil {
 		log.Panic("error opening session store")
@@ -70,34 +71,40 @@ func Session(options SessionOptions) {
 
 	defer db.Close()
 
-	db.Exec(initdb)
+	if _, err := db.Exec(dbinit); err != nil {
+		log.Panic("error initializing table and timeout index")
+	}
 
 	sessionOpt = options
-	sessionOpt.DeleteProbability = sessionOpt.DeleteProbability / 100
+	sessionOpt.ClearProbability = sessionOpt.ClearProbability / 100
 }
 
 func handleSession(sessID string, c *Context) {
+	if sessionOpt == (SessionOptions{}) {
+		return
+	}
+
 	if sessID == "" {
 		return
 	}
 
-	db, err := sql.Open("sqlite3", sessionOpt.Path)
+	db, err := sql.Open("sqlite3", sessionOpt.path)
 
 	if err != nil {
-		log.Panic(err)
+		return
 	}
 
 	rand.Seed(time.Now().Unix())
-	if rand.Float64() <= sessionOpt.DeleteProbability {
+	if rand.Float64() <= sessionOpt.ClearProbability {
 		if _, err := db.Exec("DELETE FROM sessions WHERE timeout<=?", time.Now().UnixMilli()); err != nil {
-			log.Panic(err)
+			return
 		}
 	}
 
 	stmt, err := db.Prepare("SELECT payload FROM sessions WHERE sessID=?")
 
 	if err != nil {
-		log.Panic(err)
+		return
 	}
 
 	row := stmt.QueryRow(sessID)

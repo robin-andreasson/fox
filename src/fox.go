@@ -18,12 +18,12 @@ import (
 )
 
 type router struct {
-	handlers *[]handler
-	prefix   string
-
-	preflight *handler
-
+	handlerstmpl
 	static *map[string]static
+}
+
+type groupedrouter struct {
+	handlerstmpl
 }
 
 type static struct {
@@ -35,13 +35,13 @@ type static struct {
 Initializes root router
 */
 func Init() *router {
-	return &router{handlers: &[]handler{}, preflight: &handler{}, static: &map[string]static{}}
+	return &router{handlerstmpl: handlerstmpl{handlers: &[]handler{}, prefix: ""}, static: &map[string]static{}}
 }
 
 /*
 Create a group by specifying a path prefix
 */
-func (r *router) Group(group string) *router {
+func (r *router) Group(group string) *groupedrouter {
 
 	if group == "" {
 		log.Panic("unnecessary grouping")
@@ -51,32 +51,47 @@ func (r *router) Group(group string) *router {
 		group = "/" + group
 	}
 
-	return &router{handlers: r.handlers, preflight: r.preflight, prefix: r.prefix + group, static: r.static}
+	nr := r.handlerstmpl
+
+	nr.prefix += group
+
+	return &groupedrouter{handlerstmpl: nr}
 }
 
 /*
 Get the value from nested map interfaces
 
-error occurs if the target is nil or not a map
+panic occurs if the target is nil or not a map
 */
 func Get[T any](target any, keys ...string) T {
 
 	if len(keys) == 0 {
+		targetType := reflect.TypeOf(target)
+		genericType := reflect.TypeOf(*new(T))
+
+		if targetType != genericType {
+			log.Panic(errors.New(fmt.Sprint("wrong return value type, expected ", genericType, " but is ", targetType)))
+		}
+
 		return target.(T)
 	}
 
 	key := keys[0]
 	keys = keys[1:]
 
-	t := reflect.TypeOf(target)
+	targetType := reflect.TypeOf(target)
 
-	if target == nil || t.Kind() != reflect.Map {
+	if target == nil || targetType.Kind() != reflect.Map {
 		log.Panic(errors.New("cannot nest target at key '" + key + "' because target is either not a map or nil"))
 	}
 
-	next := reflect.ValueOf(target).MapIndex(reflect.ValueOf(key)).Interface()
+	next := reflect.ValueOf(target).MapIndex(reflect.ValueOf(key))
 
-	return Get[T](next, keys...)
+	if next == reflect.Value(reflect.ValueOf(nil)) {
+		log.Panic(errors.New("key '" + key + "' did not exist inside map"))
+	}
+
+	return Get[T](next.Interface(), keys...)
 }
 
 /*
@@ -118,7 +133,7 @@ func (r *router) Static(name string, relative_path ...string) {
 /*
 Starts a server at the specified port
 */
-func Listen(port int, r *router) error {
+func (r *router) Listen(port int) error {
 
 	ln, err := net.Listen("tcp", fmt.Sprint(":", port))
 
@@ -166,6 +181,7 @@ func request(conn net.Conn, r router) {
 
 			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
 			c.setHeaders = make(map[string][]string)
+			c.Refresh = make(map[string]any)
 			c._conn = conn
 
 			if c.Headers["Content-Length"] != "" {
@@ -199,7 +215,7 @@ func request(conn net.Conn, r router) {
 
 func (r *router) handleRequests(c Context, body []byte) {
 
-	for _, handler := range *r.handlers {
+	for _, handler := range *r.handlerstmpl.handlers {
 		if handler.method != c.Method {
 			continue
 		}
@@ -217,6 +233,7 @@ func (r *router) handleRequests(c Context, body []byte) {
 
 		handleBody(body, &c)
 		handleSession(c.Cookies["FOXSESSID"], &c)
+		handleRefresh(c.Headers["Authorization"], c.Cookies["FOXREFRESH"], &c)
 
 		for _, function := range handler.stack {
 
@@ -250,7 +267,7 @@ func handleBody(body []byte, c *Context) {
 		return
 	}
 
-	segments := strings.Split(c.Headers["Content-Type"], "; ")
+	segments := strings.Split(strings.ToLower(c.Headers["Content-Type"]), "; ")
 
 	switch segments[0] {
 	case "application/json":

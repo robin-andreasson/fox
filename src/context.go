@@ -22,8 +22,9 @@ type Context struct {
 	Headers    map[string]string
 	setHeaders map[string][]string
 
-	Body    any
-	Session any
+	Body    any            // Body from the http request
+	Session any            // Session payload received from the Session middleware
+	Refresh map[string]any // Refresh payload received from the Refresh middleware
 	Error   []error
 
 	Params  map[string]string
@@ -176,7 +177,7 @@ func (c *Context) SetSession(payload any) error {
 	hash.Write(data)
 	sessID := fmt.Sprintf("%x", hash.Sum(nil))
 
-	db, err := sql.Open("sqlite3", sessionOpt.Path)
+	db, err := sql.Open("sqlite3", sessionOpt.path)
 
 	if err != nil {
 		return err
@@ -199,6 +200,24 @@ func (c *Context) SetSession(payload any) error {
 	c.Cookie("FOXSESSID", sessID, sessionOpt.Cookie)
 
 	return nil
+}
+
+/*
+set a refresh session
+
+returns access token
+*/
+func (c *Context) SetRefresh(accesstoken_payload any, refreshtoken_payload any) (string, error) {
+
+	refreshtoken, err := generateToken(refreshtoken_payload, refreshOpt.RefreshToken)
+
+	if err != nil {
+		return "", err
+	}
+
+	c.Cookie("FOXREFRESH", refreshtoken, refreshOpt.Cookie)
+
+	return generateToken(accesstoken_payload, refreshOpt.AccessToken)
 }
 
 /*

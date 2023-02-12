@@ -3,8 +3,7 @@ package main
 //crypto.randomBytes(32).toString('hex')
 import (
 	"fmt"
-	"log"
-	"os"
+	"time"
 
 	"github.com/robin-andreasson/fox"
 )
@@ -21,10 +20,30 @@ func main() {
 	})
 
 	fox.Session(fox.SessionOptions{
-		Secret:            "tangentbordkatt",
-		TimeOut:           1000 * 30,
-		DeleteProbability: 100,
-		Path:              "./session-store.db",
+		Secret:           "tangentbordkatt",
+		TimeOut:          1000 * 30,
+		ClearProbability: 100,
+		Cookie: fox.CookieAttributes{
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: "Lax",
+			Path:     "/",
+			MaxAge:   1000,
+		},
+	})
+
+	fox.Refresh(fox.RefreshOptions{
+		Secret: "tangentbordkatt",
+		RefreshFunction: func(refreshobj any) (any, error) {
+
+			return map[string]any{"username": "robin", "password": 123, "iat": time.Now().Format("Mon, 02 Jan 2006 15:04:05 GMT")}, nil
+		},
+		AccessToken: fox.TokenOptions{
+			Exp: 1000 * 30,
+		},
+		RefreshToken: fox.TokenOptions{
+			Exp: 1000 * 60 * 60 * 24,
+		},
 		Cookie: fox.CookieAttributes{
 			HttpOnly: true,
 			Secure:   true,
@@ -36,146 +55,46 @@ func main() {
 
 	r.Static("public")
 
-	r.Get("/", home)
+	r.Get("/", index)
 
-	r.Get("/cookies", cookies)
+	validate := r.Group("validate")
 
-	r.Get("/profile/:name", auth, profile)
+	validate.Post("/token", validatetoken)
 
-	r.Get("/file", file)
+	auth := r.Group("auth")
 
-	r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", book)
+	auth.Post("/login", authlogin)
 
-	api := r.Group("api")
-
-	api.Get("/json", json_get)
-	api.Put("/json", json)
-
-	form := r.Group("form")
-
-	form.Post("/urlencoded", urlencoded)
-	form.Post("/image", image)
-
-	method := r.Group("method")
-
-	method.Head("/head", func(c *fox.Context) error {
-		fmt.Println("WOW")
-		fmt.Println(c.Headers)
-		fmt.Println(c.Method)
-
-		return c.Head(fox.Status.Ok)
-	})
-
-	session := r.Group("session")
-
-	session.Get("/getSession", getSession)
-
-	session.Post("/createSession", createSession)
-
-	fmt.Println("Starting port at", 3000)
-
-	fox.Listen(3000, r)
+	fmt.Println("Server starting at port 3000")
+	r.Listen(3000)
 }
 
-func getSession(c *fox.Context) error {
-	fmt.Println(c.Cookies)
-	fmt.Print("\r\n")
-	fmt.Println(c.Session)
+func index(c *fox.Context) error {
 
-	return c.File(fox.Status.Ok, "./html/session.html")
+	return c.File(fox.Status.Ok, "./html/jwt.html")
 }
 
-func createSession(c *fox.Context) error {
-	fmt.Println(c.SetSession(c.Body))
+func validatetoken(c *fox.Context) error {
 
-	return c.Status(fox.Status.Ok)
+	fmt.Println(c.Refresh)
+
+	return c.JSON(fox.Status.Ok, c.Refresh)
 }
 
-func cookies(c *fox.Context) error {
-	c.Cookie("token", "this is a epic token value", fox.CookieAttributes{BASE64: true, MaxAge: 60 * 60 * 24})
+func authlogin(c *fox.Context) error {
 
-	return c.JSON(fox.Status.Ok, c.ResHeaders())
-}
+	username := fox.Get[string](c.Body, "user", "person", "username")
+	password := fox.Get[int](c.Body, "user", "person", "password")
 
-func auth(c *fox.Context) error {
-
-	if c.Session == nil {
-		return c.Redirect("/")
+	if username != "robin" || password != 123 {
+		return c.JSON(fox.Status.Ok, map[string]any{"error": "wrong username or password"})
 	}
 
-	return c.Next()
-}
-
-func json(c *fox.Context) error {
-
-	fmt.Println("YOU GOT HERE ANYWAYS?")
-
-	c.Cookie("token", "This is an insane token value", fox.CookieAttributes{
-		BASE64:   true,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: "None",
-		Path:     "/",
-		MaxAge:   60 * 60 * 24,
-	})
-
-	return c.JSON(fox.Status.Ok, c.Body)
-}
-
-func urlencoded(c *fox.Context) error {
-
-	fmt.Println(c.Body)
-
-	firstname := fox.Get[string](c.Body, "firstname")
-	lastname := fox.Get[string](c.Body, "lastname")
-
-	fmt.Println(firstname)
-	fmt.Println(lastname)
-
-	return c.JSON(fox.Status.Ok, c.Body)
-}
-
-func json_get(c *fox.Context) error {
-
-	return c.JSON(fox.Status.Ok, c.Headers)
-}
-
-func image(c *fox.Context) error {
-
-	files := fox.Get[map[string]any](c.Body, "Files", "image")
-
-	data := fox.Get[[]byte](files, "Data")
-
-	filename := fox.Get[string](files, "Filename")
-
-	err := os.WriteFile(filename, data, 0777)
+	accesstoken, err := c.SetRefresh(map[string]any{"username": "robin", "password": 123, "iat": time.Now().Format("Mon, 02 Jan 2006 15:04:05 GMT")}, map[string]int{"user-id": 1})
 
 	if err != nil {
-		log.Panic(err)
+		return c.JSON(fox.Status.Ok, map[string]any{"error": err.Error()})
 	}
 
-	return c.Redirect("/")
-}
-
-func home(c *fox.Context) error {
-	return c.Text(fox.Status.Ok, "<h1>Home Page</h1>")
-}
-
-func profile(c *fox.Context) error {
-
-	return c.Text(fox.Status.Ok, "<h1>"+c.Params["name"]+"'s PROFILE PAGE!</h1>")
-}
-
-func file(c *fox.Context) error {
-
-	c.Cookie("test", "damn thats a good value", fox.CookieAttributes{BASE64: true, ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
-	c.Cookie("name", "BAD ; VALUE", fox.CookieAttributes{ExpiresIn: 1000 * 60 * 60, SameSite: "Lax"})
-	c.Cookie("test2", "DAMN, GOOD VALUE", fox.CookieAttributes{ExpiresIn: 1000 * 60 * 60, SameSite: "Strict"})
-
-	return c.File(fox.Status.Ok, "./html/index.html")
-}
-
-func book(c *fox.Context) error {
-
-	return c.Text(fox.Status.Ok, "<h1>Title: "+c.Params["title"]+" Page: "+c.Params["page"]+"</h1>")
+	return c.JSON(fox.Status.Ok, map[string]any{"username": "robin", "password": 123, "accesstoken": accesstoken})
 }

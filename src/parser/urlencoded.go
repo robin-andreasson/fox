@@ -26,7 +26,6 @@ func Urlencoded(s string) map[string]any {
 
 		nestedkeys := rex_n.FindAllStringSubmatch(name, -1)
 
-		//if there are nested keys
 		if len(nestedkeys) != 0 {
 
 			k, _, _ := strings.Cut(name, "[")
@@ -69,8 +68,8 @@ func getNestedKeys(names [][]string, value string, body any) any {
 
 func convertValue(v string) any {
 
-	if i, isNumber := getNumber(v); isNumber {
-		return i
+	if number, isNumber := getNumber(v); isNumber {
+		return number
 	}
 
 	return v

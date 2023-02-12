@@ -26,19 +26,19 @@ r.Get("/code-*", handler)
 //Middleware stack
 r.Get("/auth", auth_mw, handler)
 
-func auth_mw(c *fox.Context) {
+func auth_mw(c *fox.Context) error {
     //Continue to the next handler inside the stack
     c.Next()
 }
 
 //Params, delimiter: " : "
-r.Get("/post/:id", func(c *fox.Context) {
+r.Get("/post/:id", func(c *fox.Context) error {
 
     c.Params["id"]
 })
 
 //Regex pattern for the params, Delimiter: " ; "
-r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", func (c *fox.Context) {
+r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", func (c *fox.Context) error {
     //a-z or A-Z
     c.Params["title"]
 
@@ -64,22 +64,20 @@ r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", func (c *fox.Context) {
 */
 r.Post("/image", image_handler)
 
-func image_handler(c *fox.Context) {
+func image_handler(c *fox.Context) error {
 
     //fox.Get gives you the ability to get values inside a dynamic and nested map interface
-    name := fox.Get(c.FormData, "Files", "name")
+    name := fox.Get[string](c.Body, "Files", "name")
 
-    //Type assertion is still needed since map type will always be interface
-	data := fox.Get(name, "Data").([]byte)
-	filename := fox.Get(name, "FileName").(string)
+	data := fox.Get[[]byte](name, "Data")
+	filename := fox.Get[string](name, "FileName")
 
-    //Save the file
 	if err := os.WriteFile(filename, data, 777); err != nil {
-        //handle error
+        return err
     }
 
     //Send back status code 201
-	c.Status(fox.Status.Created)
+	return c.Status(fox.Status.Created)
 }
 
 

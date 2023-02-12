@@ -8,6 +8,11 @@ import (
 	"errors"
 )
 
+type handlerstmpl struct {
+	handlers *[]handler
+	prefix   string
+}
+
 type handler struct {
 	path   string
 	method string
@@ -16,35 +21,39 @@ type handler struct {
 	params [][]string
 }
 
-func (r *router) Get(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Get(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "GET", stack))
 }
 
-func (r *router) Post(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Post(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "POST", stack))
 }
 
-func (r *router) Put(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Put(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "PUT", stack))
 }
 
-func (r *router) Delete(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Delete(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "DELETE", stack))
 }
 
-func (r *router) Head(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Head(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "HEAD", stack))
 }
 
-func (r *router) Patch(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Patch(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "PATCH", stack))
 }
 
-func (r *router) Options(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Options(path string, stack ...func(c *Context) error) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "OPTIONS", stack))
 }
 
-func (r *router) addHandler(path string, method string, stack []func(c *Context) error) handler {
+func (r *handlerstmpl) addHandler(path string, method string, stack []func(c *Context) error) handler {
+
+	if len(stack) == 0 {
+		log.Panic(errors.New("one handler is required"))
+	}
 
 	rex := regexp.MustCompile("^:([^;]+);(.+?)$|^:([^;]+)$")
 
