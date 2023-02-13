@@ -1,7 +1,7 @@
 package fox
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"regexp"
 	"time"
@@ -85,12 +85,14 @@ func handleRefresh(authorization string, refreshCookie string, c *Context) {
 	newpayload, err := refreshOpt.RefreshFunction(refreshpayload)
 
 	if err != nil {
+		c.Error = append(c.Error, err)
 		return
 	}
 
 	newaccesstoken, err := generateToken(newpayload, refreshOpt.AccessToken)
 
 	if err != nil {
+		c.Error = append(c.Error, err)
 		return
 	}
 
@@ -103,7 +105,7 @@ func validateToken(tokenStr string, secret string) (any, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
 
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, errors.New("unexpected signing method")
 		}
 
 		return []byte(secret), nil
@@ -115,7 +117,7 @@ func validateToken(tokenStr string, secret string) (any, error) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		if len(claims) == 0 {
-			return nil, fmt.Errorf("no claims")
+			return nil, errors.New("no claims")
 		}
 
 		return claims["data"], nil

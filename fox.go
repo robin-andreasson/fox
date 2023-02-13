@@ -2,7 +2,6 @@ package fox
 
 //Later import net, errors
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -59,9 +58,9 @@ func (r *router) Group(group string) *groupedrouter {
 }
 
 /*
-Get the value from nested map interfaces
+Get value from nested map interfaces
 
-panic occurs if the target is nil or not a map
+error returns the zero value equivalent to type T
 */
 func Get[T any](target any, keys ...string) T {
 	targetType := reflect.TypeOf(target)
@@ -71,7 +70,7 @@ func Get[T any](target any, keys ...string) T {
 		genericType := reflect.TypeOf(*new(T))
 
 		if targetType != genericType {
-			log.Panic(errors.New(fmt.Sprint("wrong return value type, expected ", genericType, " but is ", targetType)))
+			return *new(T)
 		}
 
 		return target.(T)
@@ -81,16 +80,12 @@ func Get[T any](target any, keys ...string) T {
 	keys = keys[1:]
 
 	if target == nil || targetType.Kind() != reflect.Map {
-		log.Panic(errors.New("cannot nest target at key '" + key + "' because target is either not a map or nil"))
+		return *new(T)
 	}
 
 	next := reflect.ValueOf(target).MapIndex(reflect.ValueOf(key))
 
 	if next == reflect.Value(reflect.ValueOf(nil)) {
-		if len(keys) > 0 {
-			log.Panic(errors.New("key '" + key + "' did not exist inside map"))
-		}
-
 		return *new(T)
 	}
 
@@ -109,7 +104,7 @@ parameter is variadic but only allows one input as the purpose is only to make i
 func (r *router) Static(name string, relative_path ...string) {
 
 	if len(relative_path) > 1 {
-		log.Panic(errors.New("only one relative_path argument is allowed"))
+		log.Panic("only one relative_path argument is allowed")
 	}
 
 	_, call_path, _, _ := runtime.Caller(1)
@@ -240,7 +235,9 @@ func (r *router) handleRequests(c Context, body []byte) {
 
 		for _, function := range handler.stack {
 
-			function(&c)
+			if err := function(&c); err != nil {
+				c.Error = append(c.Error, err)
+			}
 
 			if !c._next {
 
@@ -271,6 +268,7 @@ func handleBody(body []byte, c *Context) {
 	switch segments[0] {
 	case "application/json":
 		if err := parser.JSONUnmarshal(string(body), &c.Body); err != nil {
+			c.Error = append(c.Error, err)
 			c.Body = make(map[string]any)
 		}
 
@@ -281,7 +279,7 @@ func handleBody(body []byte, c *Context) {
 
 		c.Body = parser.FormData(body, []byte("--"+delimiter)).(map[string]any)
 	default:
-		c.Body = make(map[string]any)
+		c.Body = body
 	}
 }
 
@@ -303,10 +301,9 @@ func (r *router) handleStatic(c *Context) bool {
 				continue
 			}
 
-			//Send the file to the request endpoint
-			c.File(Status.Ok, path)
+			err := c.File(Status.Ok, path)
 
-			return true
+			return err == nil
 		}
 	}
 

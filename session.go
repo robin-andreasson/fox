@@ -97,12 +97,14 @@ func handleSession(sessID string, c *Context) {
 	db, err := sql.Open("sqlite3", sessionOpt.Path)
 
 	if err != nil {
+		c.Error = append(c.Error, err)
 		return
 	}
 
 	rand.Seed(time.Now().Unix())
 	if rand.Float64() <= sessionOpt.ClearProbability {
 		if _, err := db.Exec("DELETE FROM sessions WHERE timeout<=?", time.Now().UnixMilli()); err != nil {
+			c.Error = append(c.Error, err)
 			return
 		}
 	}
@@ -110,6 +112,7 @@ func handleSession(sessID string, c *Context) {
 	stmt, err := db.Prepare("SELECT payload FROM sessions WHERE sessID=?")
 
 	if err != nil {
+		c.Error = append(c.Error, err)
 		return
 	}
 
@@ -118,6 +121,7 @@ func handleSession(sessID string, c *Context) {
 	payload := ""
 
 	if err := row.Scan(&payload); err != nil {
+		c.Error = append(c.Error, err)
 		return
 	}
 

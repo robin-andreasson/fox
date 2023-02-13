@@ -83,16 +83,8 @@ func (c *Context) SetHeader(name string, value string) error {
 	return nil
 }
 
-func (c *Context) Head(code int) error {
-	if c.Method != "HEAD" {
-		return errors.New("head function can only be called when method is HEAD")
-	}
-
-	return c.response(code, []byte{})
-}
-
 /*
-Send text back to the request endpoint
+Send text to the request endpoint
 
 content type is set to text/html; charset=utf-8
 */
@@ -104,11 +96,11 @@ func (c *Context) Text(code int, body string) error {
 }
 
 /*
-Send back file data to the request endpoint
+Send file data to the request endpoint
 
-basic mime types like images, zips, fonts, pdf and mp4 files are calculated.
+mime types like images, zips, fonts, audio, pdf and mp4 files are calculated.
 
-mime types from script files that is in need for a sniffing technique is found through file extension
+mime types from e.g. script files that is in need for a sniffing technique is found through file extension
 */
 func (c *Context) File(code int, path string) error {
 
@@ -126,9 +118,9 @@ func (c *Context) File(code int, path string) error {
 }
 
 /*
-Send application/json response
+Send json data to the request endpoint
 */
-func (c *Context) JSON(status int, body any) error {
+func (c *Context) JSON(code int, body any) error {
 
 	if !parser.IsMap(body) && !parser.IsArray(body) {
 		return errors.New("invalid type for body, expected map or array/slice")
@@ -142,13 +134,19 @@ func (c *Context) JSON(status int, body any) error {
 
 	c.SetHeader("Content-Type", "application/json")
 
-	return c.response(status, []byte(s))
+	return c.response(code, []byte(s))
 }
 
-func (c *Context) Status(status int) error {
-	return c.response(status, []byte{})
+/*
+send empty body to the request endpoint
+*/
+func (c *Context) Status(code int) error {
+	return c.response(code, []byte{})
 }
 
+/*
+redirect the client to the specified url path
+*/
 func (c *Context) Redirect(path string) error {
 
 	c.SetHeader("Location", path)
@@ -156,6 +154,9 @@ func (c *Context) Redirect(path string) error {
 	return c.Status(Status.SeeOther)
 }
 
+/*
+create a session
+*/
 func (c *Context) SetSession(payload any) error {
 
 	if !sessionOpt.init {
@@ -266,15 +267,11 @@ func (c *Context) Cookie(name string, value string, attributes CookieAttributes)
 	switch strings.ToLower(attributes.SameSite) {
 	case "strict":
 		cookie += "; SameSite=Strict"
-		break
 	case "lax":
 		cookie += "; SameSite=Lax"
-		break
 	case "none":
 		cookie += "; SameSite=None"
-		break
 	case "":
-		break
 	default:
 		return errors.New("samesite attribute is limited between the values Strict, Lax and None")
 	}
