@@ -158,7 +158,7 @@ func (c *Context) Redirect(path string) error {
 
 func (c *Context) SetSession(payload any) error {
 
-	if sessionOpt == (SessionOptions{}) {
+	if !sessionOpt.init {
 		return errors.New("session options are nil")
 	}
 
@@ -208,6 +208,10 @@ set a refresh session
 returns access token
 */
 func (c *Context) SetRefresh(accesstoken_payload any, refreshtoken_payload any) (string, error) {
+
+	if !refreshOpt.init {
+		return "", errors.New("refresh options are nil")
+	}
 
 	refreshtoken, err := generateToken(refreshtoken_payload, refreshOpt.RefreshToken)
 
