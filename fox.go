@@ -229,8 +229,6 @@ func (r *router) handleRequests(c Context, body []byte) {
 			continue
 		}
 
-		fmt.Println(c.Url)
-
 		c.Raw = body
 		c.Params = params
 		c.Query = queries
