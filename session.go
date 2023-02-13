@@ -4,7 +4,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"runtime"
 	"time"
 
 	"database/sql"
@@ -18,9 +17,9 @@ type SessionOptions struct {
 	Secret           string  // String used in session id hashing
 	TimeOut          int     // Milliseconds until session is expired in the session store, defaults to 24 hours
 	ClearProbability float64 // value between 0 - 100 that represents the chance of fox clearing expired sessions
+	Path             string  // path to the session store
 	Cookie           CookieAttributes
 
-	path string
 	init bool
 }
 
@@ -53,18 +52,23 @@ func Session(options SessionOptions) {
 		options.TimeOut = 1000 * 60 * 60 * 24
 	}
 
-	_, path, _, _ := runtime.Caller(0)
-	options.path = Dir(path) + "/storage/session.sql"
-
 	if options.ClearProbability < 0 || options.ClearProbability > 100 {
 		log.Panic("invalid value for ClearProbability, acceptable values are between 0 and 100")
 	}
 
-	if err := os.Truncate(options.path, 0); err != nil {
+	if _, err := os.Stat(options.Path); os.IsNotExist(err) {
+		log.Panic("could not find target session store")
+	}
+
+	if extension, err := Ext(options.Path); err != nil || (extension != "db" && extension != "sql") {
+		log.Panic("invalid session store extension, sql or db is required")
+	}
+
+	if err := os.Truncate(options.Path, 0); err != nil {
 		log.Panic("could not clear session store before initialization")
 	}
 
-	db, err := sql.Open("sqlite3", options.path)
+	db, err := sql.Open("sqlite3", options.Path)
 
 	if err != nil {
 		log.Panic("error opening session store")
@@ -90,7 +94,7 @@ func handleSession(sessID string, c *Context) {
 		return
 	}
 
-	db, err := sql.Open("sqlite3", sessionOpt.path)
+	db, err := sql.Open("sqlite3", sessionOpt.Path)
 
 	if err != nil {
 		return

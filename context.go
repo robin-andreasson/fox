@@ -177,7 +177,7 @@ func (c *Context) SetSession(payload any) error {
 	hash.Write(data)
 	sessID := fmt.Sprintf("%x", hash.Sum(nil))
 
-	db, err := sql.Open("sqlite3", sessionOpt.path)
+	db, err := sql.Open("sqlite3", sessionOpt.Path)
 
 	if err != nil {
 		return err

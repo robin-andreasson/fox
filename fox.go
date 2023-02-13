@@ -125,7 +125,7 @@ func (r *router) Static(name string, relative_path ...string) {
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Panic("cannot find target directory " + name)
+		log.Panic("could not find target directory " + name)
 	}
 
 	rex := `\/` + name + `\/.+`

@@ -28,6 +28,13 @@ var refreshOpt RefreshOptions
 
 const bearer = `^bearer:\s*`
 
+/*
+creates a refresh middleware
+
+will create refresh and access tokens
+
+searches for the "authorization" header with bearer when it comes to access token
+*/
 func Refresh(options RefreshOptions) {
 	if options.AccessToken.Secret == "" || options.RefreshToken.Secret == "" {
 		log.Panic("zero value secret is not allowed")
