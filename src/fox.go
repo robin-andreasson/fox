@@ -64,9 +64,10 @@ Get the value from nested map interfaces
 panic occurs if the target is nil or not a map
 */
 func Get[T any](target any, keys ...string) T {
+	targetType := reflect.TypeOf(target)
 
 	if len(keys) == 0 {
-		targetType := reflect.TypeOf(target)
+
 		genericType := reflect.TypeOf(*new(T))
 
 		if targetType != genericType {
@@ -79,8 +80,6 @@ func Get[T any](target any, keys ...string) T {
 	key := keys[0]
 	keys = keys[1:]
 
-	targetType := reflect.TypeOf(target)
-
 	if target == nil || targetType.Kind() != reflect.Map {
 		log.Panic(errors.New("cannot nest target at key '" + key + "' because target is either not a map or nil"))
 	}
@@ -88,7 +87,11 @@ func Get[T any](target any, keys ...string) T {
 	next := reflect.ValueOf(target).MapIndex(reflect.ValueOf(key))
 
 	if next == reflect.Value(reflect.ValueOf(nil)) {
-		log.Panic(errors.New("key '" + key + "' did not exist inside map"))
+		if len(keys) > 0 {
+			log.Panic(errors.New("key '" + key + "' did not exist inside map"))
+		}
+
+		return *new(T)
 	}
 
 	return Get[T](next.Interface(), keys...)
@@ -226,6 +229,8 @@ func (r *router) handleRequests(c Context, body []byte) {
 			continue
 		}
 
+		fmt.Println(c.Url)
+
 		c.Raw = body
 		c.Params = params
 		c.Query = queries
@@ -237,11 +242,7 @@ func (r *router) handleRequests(c Context, body []byte) {
 
 		for _, function := range handler.stack {
 
-			err := function(&c)
-
-			if c.Error == nil {
-				c.Error = append(c.Error, err)
-			}
+			function(&c)
 
 			if !c._next {
 

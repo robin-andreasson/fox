@@ -21,6 +21,7 @@ type SessionOptions struct {
 	Cookie           CookieAttributes
 
 	path string
+	init bool
 }
 
 var sessionOpt SessionOptions
@@ -77,10 +78,11 @@ func Session(options SessionOptions) {
 
 	sessionOpt = options
 	sessionOpt.ClearProbability = sessionOpt.ClearProbability / 100
+	sessionOpt.init = true
 }
 
 func handleSession(sessID string, c *Context) {
-	if sessionOpt == (SessionOptions{}) {
+	if !sessionOpt.init {
 		return
 	}
 

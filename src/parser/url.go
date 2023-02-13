@@ -11,13 +11,8 @@ func Url(path string, h_path string, h_path_rex string, h_params [][]string) (bo
 
 	params := map[string]string{}
 
-	if path != h_path {
-
-		if params = getParams(path, h_path, h_path_rex, h_params); params == nil {
-
-			return false, nil, nil
-		}
-
+	if params = getParams(path, h_path, h_path_rex, h_params); params == nil {
+		return false, nil, nil
 	}
 
 	queries := getQueryStrings(query_string, found)

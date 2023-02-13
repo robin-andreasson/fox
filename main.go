@@ -32,30 +32,11 @@ func main() {
 		},
 	})
 
-	fox.Refresh(fox.RefreshOptions{
-		Secret: "tangentbordkatt",
-		RefreshFunction: func(refreshobj any) (any, error) {
-
-			return map[string]any{"username": "robin", "password": 123, "iat": time.Now().Format("Mon, 02 Jan 2006 15:04:05 GMT")}, nil
-		},
-		AccessToken: fox.TokenOptions{
-			Exp: 1000 * 30,
-		},
-		RefreshToken: fox.TokenOptions{
-			Exp: 1000 * 60 * 60 * 24,
-		},
-		Cookie: fox.CookieAttributes{
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: "Lax",
-			Path:     "/",
-			MaxAge:   1000,
-		},
-	})
-
 	r.Static("public")
 
 	r.Get("/", index)
+
+	r.Get("/profile/:book;[a-zA-Z0-9]+/:page;[0-9]+", profile)
 
 	validate := r.Group("validate")
 
@@ -69,32 +50,43 @@ func main() {
 	r.Listen(3000)
 }
 
-func index(c *fox.Context) error {
+func profile(c *fox.Context) {
 
-	return c.File(fox.Status.Ok, "./html/jwt.html")
+	c.Text(fox.Status.Ok, fmt.Sprint("book name: ", c.Params["book"], " page is ", c.Params["page"], " desc is ", c.Query["desc"]))
 }
 
-func validatetoken(c *fox.Context) error {
+func index(c *fox.Context) {
 
-	fmt.Println(c.Refresh)
-
-	return c.JSON(fox.Status.Ok, c.Refresh)
+	c.File(fox.Status.Ok, "./html/jwt.html")
 }
 
-func authlogin(c *fox.Context) error {
+func validatetoken(c *fox.Context) {
+
+	if c.Session == nil {
+		c.JSON(fox.Status.Ok, map[string]string{"error": "no session"})
+
+		return
+	}
+
+	c.JSON(fox.Status.Ok, c.Session)
+}
+
+func authlogin(c *fox.Context) {
 
 	username := fox.Get[string](c.Body, "user", "person", "username")
 	password := fox.Get[int](c.Body, "user", "person", "password")
 
 	if username != "robin" || password != 123 {
-		return c.JSON(fox.Status.Ok, map[string]any{"error": "wrong username or password"})
+		c.JSON(fox.Status.Ok, map[string]any{"error": "wrong username or password"})
+
+		return
 	}
 
-	accesstoken, err := c.SetRefresh(map[string]any{"username": "robin", "password": 123, "iat": time.Now().Format("Mon, 02 Jan 2006 15:04:05 GMT")}, map[string]int{"user-id": 1})
+	err := c.SetSession(map[string]any{"username": "robin", "password": 123, "iat": time.Now().Format("Mon, 02 Jan 2006 15:04:05 GMT")})
 
 	if err != nil {
-		return c.JSON(fox.Status.Ok, map[string]any{"error": err.Error()})
+		c.JSON(fox.Status.Ok, map[string]any{"error": err.Error()})
 	}
 
-	return c.JSON(fox.Status.Ok, map[string]any{"username": "robin", "password": 123, "accesstoken": accesstoken})
+	c.JSON(fox.Status.Ok, map[string]any{"username": "robin", "password": 123})
 }

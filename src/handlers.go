@@ -16,40 +16,40 @@ type handlerstmpl struct {
 type handler struct {
 	path   string
 	method string
-	stack  []func(c *Context) error
+	stack  []func(c *Context)
 	rex    string
 	params [][]string
 }
 
-func (r *handlerstmpl) Get(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Get(path string, stack ...func(c *Context)) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "GET", stack))
 }
 
-func (r *handlerstmpl) Post(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Post(path string, stack ...func(c *Context)) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "POST", stack))
 }
 
-func (r *handlerstmpl) Put(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Put(path string, stack ...func(c *Context)) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "PUT", stack))
 }
 
-func (r *handlerstmpl) Delete(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Delete(path string, stack ...func(c *Context)) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "DELETE", stack))
 }
 
-func (r *handlerstmpl) Head(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Head(path string, stack ...func(c *Context)) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "HEAD", stack))
 }
 
-func (r *handlerstmpl) Patch(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Patch(path string, stack ...func(c *Context)) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "PATCH", stack))
 }
 
-func (r *handlerstmpl) Options(path string, stack ...func(c *Context) error) {
+func (r *handlerstmpl) Options(path string, stack ...func(c *Context)) {
 	*r.handlers = append(*r.handlers, r.addHandler(path, "OPTIONS", stack))
 }
 
-func (r *handlerstmpl) addHandler(path string, method string, stack []func(c *Context) error) handler {
+func (r *handlerstmpl) addHandler(path string, method string, stack []func(c *Context)) handler {
 
 	if len(stack) == 0 {
 		log.Panic(errors.New("one handler is required"))

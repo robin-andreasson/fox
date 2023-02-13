@@ -10,7 +10,6 @@ import (
 )
 
 type RefreshOptions struct {
-	Secret          string
 	AccessToken     TokenOptions
 	RefreshToken    TokenOptions
 	RefreshFunction func(refreshobj any) (any, error) // retrieve payload you plan to store inside access token
@@ -20,8 +19,9 @@ type RefreshOptions struct {
 }
 
 type TokenOptions struct {
-	Exp int // Milliseconds until token expires
-	Nbf int // Milliseconds until before activated
+	Secret string // string used to encode jwt tokens
+	Exp    int    // Milliseconds until token expires
+	Nbf    int    // Milliseconds until before activated
 }
 
 var refreshOpt RefreshOptions
@@ -29,8 +29,8 @@ var refreshOpt RefreshOptions
 const bearer = `^bearer:\s*`
 
 func Refresh(options RefreshOptions) {
-	if options.Secret == "" {
-		log.Panic("zero value Secret is not allowed")
+	if options.AccessToken.Secret == "" || options.RefreshToken.Secret == "" {
+		log.Panic("zero value secret is not allowed")
 	}
 
 	if options.RefreshFunction == nil {
@@ -59,19 +59,17 @@ func handleRefresh(authorization string, refreshCookie string, c *Context) {
 
 	accesstoken := bearer[1]
 
-	if payload, err := validateToken(accesstoken); err == nil {
-		c.Refresh["payload"] = payload
+	if payload, err := validateToken(accesstoken, refreshOpt.AccessToken.Secret); err == nil {
+		c.Refresh["Payload"] = payload
 
 		return
-	} else {
-		fmt.Println("ACCESS TOKEN ERROR: ", err)
 	}
 
 	if refreshCookie == "" {
 		return
 	}
 
-	refreshpayload, err := validateToken(refreshCookie)
+	refreshpayload, err := validateToken(refreshCookie, refreshOpt.RefreshToken.Secret)
 
 	if err != nil {
 		return
@@ -93,7 +91,7 @@ func handleRefresh(authorization string, refreshCookie string, c *Context) {
 	c.Refresh["Accesstoken"] = newaccesstoken
 }
 
-func validateToken(tokenStr string) (any, error) {
+func validateToken(tokenStr string, secret string) (any, error) {
 
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
 
@@ -101,14 +99,22 @@ func validateToken(tokenStr string) (any, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
-		return []byte(refreshOpt.Secret), nil
+		return []byte(secret), nil
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if len(claims) == 0 {
+			return nil, fmt.Errorf("no claims")
+		}
+
 		return claims["data"], nil
 	}
 
-	return nil, err
+	return nil, nil
 }
 
 func generateToken(payload any, tokenopt TokenOptions) (string, error) {
@@ -121,5 +127,5 @@ func generateToken(payload any, tokenopt TokenOptions) (string, error) {
 		"nbf":  now.Add(time.Millisecond * time.Duration(tokenopt.Nbf)).Unix(),
 	})
 
-	return token.SignedString([]byte(refreshOpt.Secret))
+	return token.SignedString([]byte(tokenopt.Secret))
 }

@@ -14,8 +14,6 @@ document.getElementById('login').addEventListener('submit', async (e) => {
     const data = await res.json()
 
     console.log(data)
-
-    token = data.accesstoken
 })
 
 document.getElementById('check-token').addEventListener('click', async (e) => {
@@ -31,6 +29,4 @@ document.getElementById('check-token').addEventListener('click', async (e) => {
     const data = await res.json()
 
     console.log(data)
-
-    token = data.Accesstoken
 })
