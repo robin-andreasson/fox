@@ -30,19 +30,19 @@ r.Get("/code-*", handler)
 //Middleware stack
 r.Get("/auth", auth_mw, handler)
 
-func auth_mw(c *fox.Context) {
+func auth_mw(c *fox.Context) error {
     //Continue to the next handler inside the stack
-    c.Next()
+    return c.Next()
 }
 
 //Params, delimiter: " : "
-r.Get("/post/:id", func(c *fox.Context) {
+r.Get("/post/:id", func(c *fox.Context) error {
 
     c.Params["id"]
 })
 
-//Regex pattern for the params, Delimiter: " ; "
-r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", func (c *fox.Context) {
+//Regex pattern for params, Delimiter: " ; "
+r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", func (c *fox.Context) error {
     //a-z or A-Z
     c.Params["title"]
 
@@ -53,7 +53,7 @@ r.Get("/book/:title;[a-zA-Z]+/:page;[0-9]+", func (c *fox.Context) {
 //Create groups, gets the /api prefix
 api := r.Group("api")
 
-/* /api/json */
+/*    /api/json   */
 api.Get("/json", handler)
 
 
@@ -73,7 +73,7 @@ api.Get("/json", handler)
 */
 r.Post("/image", image_handler)
 
-func image_handler(c *fox.Context) {
+func image_handler(c *fox.Context) error {
 
     //fox.Get gives you the ability to get values inside a nested map interface easily
     name := fox.Get[string](c.Body, "Files", "key-name")
@@ -82,11 +82,11 @@ func image_handler(c *fox.Context) {
 	filename := fox.Get[string](name, "Filename")
 
 	if err := os.WriteFile(filename, data, 777); err != nil {
-        //handle error
+        return err
     }
 
     //Send back status code 201
-	c.Status(fox.Status.Created)
+	return c.Status(fox.Status.Created)
 }
 
 
