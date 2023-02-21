@@ -97,7 +97,7 @@ func handleRefresh(authorization string, refreshCookie string, c *Context) {
 	}
 
 	c.Refresh["Payload"] = newpayload
-	c.Refresh["Accesstoken"] = newaccesstoken
+	c.SetHeader("X-Fox-Access-Token", newaccesstoken)
 }
 
 func validateToken(tokenStr string, secret string) (any, error) {
