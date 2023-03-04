@@ -114,9 +114,13 @@ func (r *router) Static(name string, relative_path ...string) {
 	var path string
 
 	if len(relative_path) == 0 {
-		path = filepath.Join(call_path, r.prefix+"/"+name)
+		path = filepath.Join(call_path, "/"+name)
 	} else {
-		path = filepath.Join(call_path, r.prefix+relative_path[0])
+		if relative_path[0][len(relative_path[0])-1] != '/' {
+			relative_path[0] += "/"
+		}
+
+		path = filepath.Join(call_path, relative_path[0]+name)
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {

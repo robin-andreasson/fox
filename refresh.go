@@ -26,7 +26,7 @@ type TokenOptions struct {
 
 var refreshOpt RefreshOptions
 
-const bearer = `^bearer:\s*`
+const bearer = `^bearer\s*`
 
 /*
 creates a refresh middleware
