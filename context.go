@@ -22,9 +22,9 @@ type Context struct {
 	Headers    map[string]string
 	setHeaders map[string][]string
 
-	Body    any            // Body from the http request
-	Session any            // Session payload received from the Session middleware
-	Refresh map[string]any // Refresh payload received from the Refresh middleware
+	Body    any // Body from the http request
+	Session any // Session payload received from the Session middleware
+	Refresh any // Refresh payload received from the Refresh middleware
 	Error   []error
 
 	Params  map[string]string

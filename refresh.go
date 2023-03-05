@@ -60,17 +60,14 @@ func handleRefresh(authorization string, refreshCookie string, c *Context) {
 
 	bearer := regexp.MustCompile(bearer).Split(authorization, 2)
 
-	if len(bearer) <= 1 {
-		return
-	}
+	if len(bearer) > 1 {
+		accesstoken := bearer[1]
 
-	accesstoken := bearer[1]
-	c.Refresh = make(map[string]any)
+		if payload, err := validateToken(accesstoken, refreshOpt.AccessToken.Secret); err == nil && payload != nil {
+			c.Refresh = payload
 
-	if payload, err := validateToken(accesstoken, refreshOpt.AccessToken.Secret); err == nil {
-		c.Refresh["Payload"] = payload
-
-		return
+			return
+		}
 	}
 
 	if refreshCookie == "" {
@@ -97,7 +94,7 @@ func handleRefresh(authorization string, refreshCookie string, c *Context) {
 		return
 	}
 
-	c.Refresh["Payload"] = newpayload
+	c.Refresh = newpayload
 	c.SetHeader("X-Fox-Access-Token", newaccesstoken)
 }
 
