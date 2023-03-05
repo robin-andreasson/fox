@@ -183,7 +183,6 @@ func request(conn net.Conn, r router) {
 
 			c.Method, c.Url, c.Headers = parser.Headers(string(headers_bytes))
 			c.setHeaders = make(map[string][]string)
-			c.Refresh = make(map[string]any)
 			c._conn = conn
 
 			if c.Headers["Content-Length"] != "" {

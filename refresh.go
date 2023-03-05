@@ -65,6 +65,7 @@ func handleRefresh(authorization string, refreshCookie string, c *Context) {
 	}
 
 	accesstoken := bearer[1]
+	c.Refresh = make(map[string]any)
 
 	if payload, err := validateToken(accesstoken, refreshOpt.AccessToken.Secret); err == nil {
 		c.Refresh["Payload"] = payload
