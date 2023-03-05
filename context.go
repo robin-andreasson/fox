@@ -208,21 +208,28 @@ set a refresh session
 
 returns access token
 */
-func (c *Context) SetRefresh(accesstoken_payload any, refreshtoken_payload any) (string, error) {
+func (c *Context) SetRefresh(accesstoken_payload any, refreshtoken_payload any) error {
 
 	if !refreshOpt.init {
-		return "", errors.New("refresh options are nil")
+		return errors.New("refresh options are nil")
 	}
 
 	refreshtoken, err := generateToken(refreshtoken_payload, refreshOpt.RefreshToken)
 
 	if err != nil {
-		return "", err
+		return err
+	}
+
+	accesstoken, err := generateToken(accesstoken_payload, refreshOpt.AccessToken)
+
+	if err != nil {
+		return err
 	}
 
 	c.Cookie("FOXREFRESH", refreshtoken, refreshOpt.Cookie)
+	c.SetHeader("X-Fox-Access-Token", accesstoken)
 
-	return generateToken(accesstoken_payload, refreshOpt.AccessToken)
+	return nil
 }
 
 /*
