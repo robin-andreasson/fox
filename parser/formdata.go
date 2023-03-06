@@ -70,7 +70,16 @@ func FormData(body []byte, delimiter []byte) any {
 			result["Files"] = make(map[string]any)
 		}
 
-		result["Files"].(map[string]any)[name] = file_content
+		content := result["Files"].(map[string]any)[name]
+		isArr := IsArray(content)
+
+		if content != nil && !isArr {
+			result["Files"].(map[string]any)[name] = []any{content, file_content}
+		} else if content != nil && isArr {
+			result["Files"].(map[string]any)[name] = append(content.([]any), file_content)
+		} else {
+			result["Files"].(map[string]any)[name] = file_content
+		}
 	}
 
 	return result

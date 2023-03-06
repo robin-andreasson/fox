@@ -266,9 +266,12 @@ func handleBody(body []byte, c *Context) {
 		return
 	}
 
-	segments := strings.Split(strings.ToLower(c.Headers["Content-Type"]), "; ")
+	segments := strings.Split(c.Headers["Content-Type"], "; ")
 
-	switch segments[0] {
+	contentType := strings.ToLower(segments[0])
+
+	switch contentType {
+
 	case "application/json":
 		if err := parser.JSONUnmarshal(string(body), &c.Body); err != nil {
 			c.Error = append(c.Error, err)
@@ -278,9 +281,21 @@ func handleBody(body []byte, c *Context) {
 	case "application/x-www-form-urlencoded":
 		c.Body = parser.Urlencoded(string(body))
 	case "multipart/form-data":
-		delimiter := strings.Split(segments[1], "boundary=")[1]
+		if len(segments) <= 1 {
+			c.Body = body
+			return
+		}
 
-		c.Body = parser.FormData(body, []byte("--"+delimiter)).(map[string]any)
+		delimiters := strings.Split(segments[1], "boundary=")
+
+		if len(delimiters) <= 1 {
+			c.Body = body
+			return
+		}
+
+		delimiter := "--" + delimiters[1]
+
+		c.Body = parser.FormData(body, []byte(delimiter)).(map[string]any)
 	default:
 		c.Body = body
 	}
