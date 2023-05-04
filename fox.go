@@ -69,7 +69,7 @@ func Get[T any](target any, keys ...string) T {
 
 		genericType := reflect.TypeOf(*new(T))
 
-		if targetType != genericType {
+		if genericType != nil && targetType != genericType {
 			return *new(T)
 		}
 
@@ -163,7 +163,7 @@ func request(conn net.Conn, r router) {
 	var content_length int
 
 	for {
-		buffer := make([]byte, 65535)
+		buffer := make([]byte, 4096)
 
 		n, _ := conn.Read(buffer)
 
