@@ -1,10 +1,18 @@
 # Fox
 
-Web Application Framework built in Go.
+[![GoDoc](https://pkg.go.dev/badge/github.com/robin-andreasson/fox?utm_source=godoc)](https://pkg.go.dev/github.com/robin-andreasson/fox)
+
+Web application framework built in Go during school and free time. 
 
 Session feature uses sqlite as session storage, you'll need an [gcc compiler](https://jmeubank.github.io/tdm-gcc) to run your program.
 
-# Layout
+## Install
+
+```sh
+go get github.com/robin-andreasson/fox
+```
+
+## Layout
 
 ```go
 //Initialize root router
@@ -18,10 +26,10 @@ r := fox.Init()
 r.Listen(3000)
 ```
 
-# Features
+## Features
 
 
-#### Routing
+### Routing
 Map functions to url paths
 ```go
 r.Get("/", handler)
@@ -32,20 +40,22 @@ r.Put("/", handler)
 
 r.Delete("/", handler)
 ```
-#### Groups
+### Groups
 Add path prefixes to remove redundancy
 ```go
-auth := r.Group("/auth")
+auth := r.Group("auth")
 
-// -> "/auth/signin"
-auth.Get("/signin", handler)
+// -> /auth/signin
+auth.Post("/signin", handler)
+// -> /auth/signup
+auth.Post("/signup", handler)
 ```
 
-#### Path variables
+### Path variables
 
-Add variables in path, colon as delimiter
+Add variables in url paths, colon as delimiter
 ```go
-//Variable named id
+//Path variable named id
 r.Get("/task/:id", getTask)
 
 func getTask(c *fox.Context) error {
@@ -53,20 +63,19 @@ func getTask(c *fox.Context) error {
     id := c.Params("id")
 }
 ```
-Regex pattern for validation, semicolon as delimiter
+Regex pattern for specifying possible path variable values, semicolon as delimiter.
 ```go
 /*
-Trigger handler if id variable matches the numbers only pattern
+Trigger handler only if page variable matches the regex ^\d+$
 
-Fox automatically wraps your regex statement between ^ and $
+Fox wraps your regex statement between ^ and $
 e.g. \d+ becomes ^\d+$
 */
-r.Get("/user/:id;\d+")
+r.Get("/book/:name/:page;\d+")
 ```
 
-#### Body parsing and fox.Get
-Fox parses your http body and maps them to an interface typed struct field in fox.Context called Body.
-
+### Body parsing and fox.Get
+Fox parses incoming http bodies and maps them to an interface typed field in fox.Context called Body.
 
 Multipart/form-data example:
 ```go
@@ -100,9 +109,9 @@ func handler(c *fox.Context) error {
 }
 ```
 
-#### Session
+### Session
 
-Session middleware, a way to store information to be used across multiple pages.
+A way to store information to be used across multiple pages.
 
 ```go
 
@@ -148,9 +157,9 @@ func session(c *fox.Context) error {
 }
 ```
 
-#### Refresh
+### Refresh
 
-allows the client to continuously receive new jwt access token through the *_X-Fox-Access-Token_* header.
+Allows the client to receive new jwt access token through the *_X-Fox-Access-Token_* header.
 
 
 ```go
@@ -185,7 +194,10 @@ func handleRefresh(refreshdata any) (any, error) {
 
     id := fox.Get[string](refreshdata, "id")
 
-    result := /* fetch */
+    /*    
+        fetch new access token data with the help of refresh token data 
+    */
+    result := fetch(id)
 
     return result, nil
 }
@@ -215,7 +227,7 @@ func session(c *fox.Context) error {
 }
 ```
 
-#### Middleware
+### Middleware
 
 Add functions to be called before the main handler
 
@@ -229,9 +241,9 @@ func middleware(c *fox.Context) error {
 }
 ```
 
-#### Statically serve files
+### Statically serve files
 
-Specify folder used to serve static files when the client endpoint requests them
+Specify folder to be used to serve static files when the client endpoint requests them
 ```go
 /*
     wd: /src/internal
