@@ -308,7 +308,7 @@ func JSONMarshal(v any) (string, error) {
 
 			var err error
 
-			if IsMap(value) {
+			if IsMap(value) || IsArray(value) {
 				value, err = JSONMarshal(value)
 			} else {
 				value, err = convertGoValues(value)

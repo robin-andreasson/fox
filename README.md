@@ -2,7 +2,7 @@
 
 [![GoDoc](https://pkg.go.dev/badge/github.com/robin-andreasson/fox?utm_source=godoc)](https://pkg.go.dev/github.com/robin-andreasson/fox)
 
-Web application framework built in Go during school and free time. 
+Web application framework built during school and free time. 
 
 Session feature uses sqlite as session storage, you'll need an [gcc compiler](https://jmeubank.github.io/tdm-gcc) to run your program.
 
@@ -95,7 +95,7 @@ r.Post("/image", handler)
 
 func handler(c *fox.Context) error {
 
-    //retrieve nested interface data with fox.Get
+    //retrieve data from nested map interfaces with fox.Get
     image := fox.Get[map[string]any](c.Body, "Files", "file-name")
 
     data := fox.Get[[]byte](image, "Data")
@@ -105,7 +105,7 @@ func handler(c *fox.Context) error {
         return c.Status(fox.Status.InternalServerError)
     }
 
-    return c.Status(fox.Status.Created)
+    return c.JSON(fox.Status.Created, map[string]string{"message": "successfully created image"})
 }
 ```
 
