@@ -336,7 +336,10 @@ func convertGoValues(v any) (string, error) {
 	}
 
 	if reflect.TypeOf(v).Kind() == reflect.String {
-		return `"` + v.(string) + `"`, nil
+
+		str := escapeDoubleQuotes(v.(string))
+
+		return `"` + str + `"`, nil
 	}
 
 	if v == true {

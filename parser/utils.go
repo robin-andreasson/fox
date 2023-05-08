@@ -132,6 +132,27 @@ func unicodedecode(s string) string {
 	return s
 }
 
+func escapeDoubleQuotes(str string) string {
+	slashCount := 0
+
+	for i := 0; i < len(str); i++ {
+		s := str[i]
+
+		if s == '"' && (slashCount%2 == 0) {
+			str = str[:i] + `\` + str[i:]
+			i++
+		}
+
+		if s == '\\' {
+			slashCount++
+		} else {
+			slashCount = 0
+		}
+	}
+
+	return str
+}
+
 func IsMap(v any) bool {
 	if v == nil {
 		return false
